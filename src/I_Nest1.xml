@@ -19,6 +19,22 @@
 -->
 <implementation>
   <functions>
+    local decompressScript = [[
+decompress_lzo_file() {
+	SRC_FILE=/etc/cmh-ludl/$1.lzo
+	DEST_FILE=/etc/cmh-ludl/$1
+	if [ ! -e $DEST_FILE -o $SRC_FILE -nt $DEST_FILE ]
+	then
+		TEMP_FILE=$(mktemp)
+		pluto-lzo d $SRC_FILE $TEMP_FILE
+		mv $TEMP_FILE $DEST_FILE
+	fi
+}
+]]
+
+		os.execute(decompressScript .. "decompress_lzo_file L_nest_dkjson.lua")
+		os.execute(decompressScript .. "decompress_lzo_file L_nest_urlcode.lua")
+
     local MSG_CLASS = "Nest"
     local DEBUG_MODE = true
     local taskHandle = -1
@@ -93,6 +109,8 @@
     end
 
     -- main functions
+
+    local PLUGIN_VERSION = "0.5"
 
     local NEST_SID = "urn:watou-com:serviceId:Nest1"
     local NEST_STRUCTURE_SID = "urn:watou-com:serviceId:NestStructure1"
@@ -663,7 +681,7 @@
     end
     
     function init(lul_device)
-      log("plugin starting up...", 50)
+      log("plugin version " .. PLUGIN_VERSION .. " starting up...", 50)
 
       if (luup.version_branch &lt; 1 or luup.version_major &lt; 5 or luup.version_minor &lt; 408 ) then
         task("Version 1.5.408 minimum required to run")
