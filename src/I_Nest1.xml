@@ -19,18 +19,30 @@
 -->
 <implementation>
   <functions>
+    local MSG_CLASS = "Nest"
     local DEBUG_MODE = true
+    local taskHandle = -1
+    local TASK_ERROR = 2
+    local TASK_ERROR_PERM = -2
+    local TASK_SUCCESS = 4
+    local TASK_BUSY = 1
 
     -- utility functions
 
     local function log(text, level)
-        luup.log("Nest: " .. text, (level or 1))
+      luup.log(MSG_CLASS .. ": " .. text, (level or 1))
     end
 
     local function debug(text)
-        if (DEBUG_MODE) then
-            log("debug: " .. text, 50)
-        end
+      if (DEBUG_MODE) then
+        log("debug: " .. text, 35)
+      end
+    end
+
+    local function task(text, mode)
+      local mode = mode or TASK_ERROR
+      log("task: " .. text, 50)
+      taskHandle = luup.task(text, (mode == TASK_ERROR_PERM) and TASK_ERROR or mode, MSG_CLASS, taskHandle)
     end
 
     local function deepToString(o)
@@ -94,8 +106,10 @@
     local HVAC_STATE_SID = "urn:micasaverde-com:serviceId:HVAC_OperatingState1"
     local HA_DEVICE_SID = "urn:micasaverde-com:serviceId:HaDevice1"
     local SWITCH_POWER_SID = "urn:upnp-org:serviceId:SwitchPower1"
-    local DEFAULT_POLL = 180
+    local MCV_ENERGY_METERING_SID = "urn:micasaverde-com:serviceId:EnergyMetering1"
+    local DEFAULT_POLL = 120
     local MIN_POLL = 60
+    local SOON = 5
     local NEST_UA = "Nest/1.1.0.10 CFNetwork/548.0.4"
     local NEST_BATTERY_LOW = 3.6
     local NEST_BATTERY_HIGH = 3.9
@@ -236,6 +250,9 @@
           return (device["$timestamp"] and tonumber(device["$timestamp"])) and
             tostring(math.floor(device["$timestamp"]/1000)) or tostring(os.time())
         end
+      },
+      [MCV_ENERGY_METERING_SID] = {
+        ["UserSuppliedWattage"] = function(shared, device) return "0,0,0" end
       }
     }
 
@@ -275,6 +292,8 @@
       data.username = readVariableOrInit(PARENT_DEVICE, NEST_SID, "username", "" )
       data.password = readVariableOrInit(PARENT_DEVICE, NEST_SID, "password", "" )
       data.period   = tonumber(readVariableOrInit(PARENT_DEVICE, NEST_SID, "period", tostring(DEFAULT_POLL)))
+      data.period   = data.period or DEFAULT_POLL
+      data.period   = (data.period &lt; MIN_POLL) and MIN_POLL or data.period 
 
       -- Internal variables
       data.transport_url = readVariableOrInit(PARENT_DEVICE, NEST_SID, "transport_url", "")
@@ -295,7 +314,6 @@
 
     local function clearSession()
       saveSession("", "", "")
-      log("will try to login on next poll")
     end
 
     -- login to nest.com if we think we need to
@@ -307,7 +325,7 @@
 
       -- if there is no username or password, then no matter what, don't proceed
       if (data.username == "" or data.password == "") then
-        luup.task("Please specify username and password.", 2, "Nest", -1)
+        task("Please specify username and password.")
         clearSession()
         return
       end
@@ -342,13 +360,12 @@
         data.userid = res.userid
         data.access_token = res.access_token
 
-        debug("logged in successfully, got userid = " .. data.userid)
-        luup.task("Successful nest.com login.", 4, "Nest", -1)
+        task("Successful nest.com login.", TASK_SUCCESS)
         saveSession(data.transport_url, data.userid, data.access_token)
         return data
       else
         log("nest.com login failed with HTTP code=" .. tostring(code) .. ", status=" .. tstring(status))
-        luup.task("Failed to login: " .. tostring(status), 2, "Nest", -1)
+        task("Failed to login: " .. tostring(status))
         clearSession()
       end
     end
@@ -416,7 +433,8 @@
                  "\n" .. nestToUpnpParam(HVAC_USER_SID, "ModeStatus", v, dev) ..
                  "\n" .. nestToUpnpParam(HVAC_STATE_SID, "ModeState", v, dev) ..
                  "\n" .. nestToUpnpParam(HA_DEVICE_SID, "BatteryLevel", v, dev) ..
-                 "\n" .. nestToUpnpParam(HA_DEVICE_SID, "BatteryDate", v, dev)
+                 "\n" .. nestToUpnpParam(HA_DEVICE_SID, "BatteryDate", v, dev) ..
+                 "\n" .. nestToUpnpParam(MCV_ENERGY_METERING_SID, "UserSuppliedWattage", v, dev)
                  , false, false)
           end
           for k,v in pairs(res.shared) do
@@ -571,8 +589,6 @@
           targetType ~= "heat" and targetType ~= "cool") then
         log("Invalid target_temperature_type: " .. tostring(targetType))
         return false
-      else
-        return false -- doesn't work
       end
       
       local session = login()
@@ -581,7 +597,7 @@
         return false
       else
         local res = {}
-        local data = '{"target_temperature_type":' .. targetType .. '}'
+        local data = '{"target_temperature_type":"' .. targetType .. '"}'
         local headers = {["user-agent"] = NEST_UA,
                          ["Authorization"] = "Basic " .. session.access_token,
                          ["X-nl-protocol-version"] = "1",
@@ -632,6 +648,8 @@
     function poll()
       debug("in poll()")
 
+      task("Clearing...", TASK_SUCCESS)
+
       getStatus()
 
       -- set up the next poll
@@ -641,11 +659,16 @@
     end
 
     local function getStatusSoon()
-      luup.call_timer("poll", 1, "5")
+      luup.call_timer("poll", 1, tostring(SOON))
     end
     
     function init(lul_device)
       log("plugin starting up...", 50)
+
+      if (luup.version_branch &lt; 1 or luup.version_major &lt; 5 or luup.version_minor &lt; 408 ) then
+        task("Version 1.5.408 minimum required to run")
+        return false
+      end
 
       PARENT_DEVICE = lul_device
 
@@ -696,7 +719,10 @@
       <serviceId>urn:watou-com:serviceId:Nest1</serviceId>
       <name>SetPeriod</name>
       <run>
-        luup.variable_set(NEST_SID, "period", lul_settings.period or "", lul_device)
+        local period = tonumber(lul_settings.period)
+        period = period or DEFAULT_POLL
+        period = (period &lt; MIN_POLL) and MIN_POLL or period
+        luup.variable_set(NEST_SID, "period", period, lul_device)
       </run>
     </action>
     <action>
@@ -736,8 +762,7 @@
         if (setAway(getStructureId(luup.devices[lul_device].id), away)) then
           getStatusSoon()
         else
-          log("Failed to perform setAway")
-          luup.task("Failed to send command.", 2, "Nest", -1)
+          task("Failed to send away command.")
         end
       </run>
     </action>
@@ -771,8 +796,7 @@
         if (setAway(getStructureId(luup.devices[lul_device].id), away)) then
           getStatusSoon()
         else
-          log("Failed to perform setAway")
-          luup.task("Failed to send command.", 2, "Nest", -1)
+          task("Failed to send away command.")
         end
       </run>
     </action>
@@ -819,8 +843,7 @@
         if (setTargetTemperature(TEMP_SETPOINT_HEAT_SID, lul_device, delocalizeTemp(lul_settings.NewCurrentSetpoint))) then
           getStatusSoon()
         else
-          log("Failed to perform setTargetTemperature")
-          luup.task("Failed to send command.", 2, "Nest", -1)
+          task("Failed to send heat setpoint command.")
         end
       </run>
     </action>
@@ -846,8 +869,7 @@
         if (setTargetTemperature(TEMP_SETPOINT_COOL_SID, lul_device, delocalizeTemp(lul_settings.NewCurrentSetpoint))) then
           getStatusSoon()
         else
-          log("Failed to perform setTargetTemperature")
-          luup.task("Failed to send command.", 2, "Nest", -1)
+          task("Failed to send cool setpoint command.")
         end
       </run>
     </action>
@@ -867,8 +889,7 @@
         if (targetType and setTargetTemperatureType(getThermostatId(luup.devices[lul_device].id), targetType)) then
           getStatusSoon()
         else
-          log("Failed to perform setTargetTemperatureType")
-          luup.task("Failed to send command.", 2, "Nest", -1)
+          task("Failed to send set mode target command.")
         end
       </run>
     </action>
@@ -902,8 +923,7 @@
         if (setFan(getThermostatId(luup.devices[lul_device].id), mode)) then
           getStatusSoon()
         else
-          log("Failed to perform setFan")
-          luup.task("Failed to send command.", 2, "Nest", -1)
+          task("Failed to send fan command.")
         end
       </run>
     </action>
