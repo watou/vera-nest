@@ -9,25 +9,23 @@ PURPOSE
 FEATURES
 
 - Monitor thermostat mode, fan mode, current and set point temperatures, humidity level, running and idle states and battery level.
-- Control temperature set points, fan mode
-- Set your house to Home or Away, switching all Nest thermostats to an energy saving mode when unoccupied.
+- Control temperature set points, thermostat mode, and fan mode.
+- Set your house to Home or Away, switching all your Nest thermostats to an energy saving mode when unoccupied.
 
 
 HOW TO USE
 
-- Open the settings for the Nest device that was created at plugin installation, and set your nest.com user name and password.  Also choose a polling frequency (in seconds) if you want to poll more or less often than the default 120 seconds.
+- Open the settings for the Nest device that was created at plugin installation, and set your nest.com user name and password.  Also choose a polling frequency (in seconds) if you want to poll more or less often than the default 120 seconds.  You may not poll more often than every 60 seconds, as this might be considered abusive by the nest.com servers.
 - Shortly after saving your changes, the plugin will login to nest.com and retrieve all of the locations associated with your account, and all the thermostats within each location.  Since the Nest also contains a humidity sensor, the plugin also creates a humidistat device for each thermostat it discovers.
 
 
 NOTES AND LIMITATIONS
 
-- Works with Vera UI5 only
+- Only works with Vera UI5 1.5.408 or later.
 
 - When a thermostat's current operating mode is AutoChangeOver, the current heat and cool setpoints reflect the allowed range as you would expect.  However, in the HeatOn or CoolOn operating modes, both the heat and cool setpoints reflect the same, single target temperature.  This is a side effect of the Nest's design.
 
 - The plugin is based on an undocumented and unsupported interface to Nest, which may change or break or otherwise become inaccessible at any time.
-
-- While the thermostat device reflects the current operating mode (Off/HeatOn/CoolOn/AutoChangeOver), I do not yet know how to instruct the Nest to switch between these modes.
 
 - Updates to the state of the Location, Thermostat and Humidistat devices can take up to the polling number of seconds (120 by default) to be reflected in the UPnP devices (or as quickly as 5 seconds).  I am investigating a change that would make these updates much faster, but I cannot guarantee that this will be implemented.  In any case, I believe that the current approach will work for almost all users.
 
@@ -56,7 +54,6 @@ THANKS
 
 PLANS (hopeful)
 
-- Implement SetModeTarget within HVAC_UserOperatingMode1 to change the thermostat's operating mode.
 - See about integrating historical energy usage data into the plugin.
 - Have status updates arrive more quickly.
 - Report the heating or cooling stage, since Nest supports multiple heating and cooling stages.
