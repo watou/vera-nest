@@ -2,29 +2,24 @@ TODO
 
 Nest:
 
-- sanity check period input value
-- return the proper values from the startup function
-- Put Vera version restriction in plugin
 - Find out how to create the singleton Nest device on plugin installation
-- luup.task properly to eliminate old messages
-- do get_urls to make sure connectivity is there....?
+- Alter .png paths to match plugin packaging
 
 Thermostat:
 
 - fan mode and status to eventList2
-- finish implementing HaDevice
+- finish implementing HaDevice -- which parts need to be implemented?
 - report the heating or cooling stage to the user -- expose in Thermostat service
-- Use HADEVICE:Commands and ControlCode list to set up thermostat initially maybe?
 
 Humidistat:
 
-X device.current_humidity = 39
-- device.target_humidity_enabled = false
-- device.target_humidity = 35
-- device.has_humidifier = false
-- device.humidifier_type = "unknown"
-- 	device.humidifier_state = false
-- device.has_dehumidifier = false
-- device.dehumidifier_type = "unknown"
-- device.dehumidifier_state = false
+X current_humidity = 39
+- target_humidity_enabled = false
+- target_humidity = 35
+- has_humidifier = false
+- humidifier_type = "unknown"
+- humidifier_state = false
+- has_dehumidifier = false
+- dehumidifier_type = "unknown"
+- dehumidifier_state = false
 
