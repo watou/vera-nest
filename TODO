@@ -1,34 +1,20 @@
 TODO
 
+Nest:
+
 - sanity check period input value
-- Note inclusion of S_HouseStatus1.xml 
 - return the proper values from the startup function
-- BUG: SetCurrentSetpoint wants to set 67 but gets 66 instead -- rounding problem?
-- BUG: Setpoint_Heat didn't work -- said 67 but didn't change
-
-- fan mode and status to eventList2
-X Add SwitchPower1 for structure devices (away is off, home is on) and make it category_num 3 (switch)
-- finish implementing HaDevice
-- report the heating or cooling stage to the user -- expose in Thermostat service
-- shared.target_temperature/_high/_low/_type -- find how to set!
-    19.385/24/20/heat (67F)
-    19.385/24/20/range
-    24.428/24/20/cool  (76F)
-    24.428/24/20/off
-
-X Add to NestStructure:
-   structure.street_address
-   structure.location
-   structure.postal_code  structure.country_code
-X Replace AwayStatus with SwitchPower
-   
 - Put Vera version restriction in plugin
 - Find out how to create the singleton Nest device on plugin installation
-X Remove single setpoint; use only the Heat and Cool setpoints, fix the event list etc. to agree
-  X find out how to set both setpoints when in "range" mode -- necessary!
-- Use HADEVICE:Commands and ControlCode list to set up thermostat initially
 - luup.task properly to eliminate old messages
 - do get_urls to make sure connectivity is there....?
+
+Thermostat:
+
+- fan mode and status to eventList2
+- finish implementing HaDevice
+- report the heating or cooling stage to the user -- expose in Thermostat service
+- Use HADEVICE:Commands and ControlCode list to set up thermostat initially maybe?
 
 Humidistat:
 
@@ -41,110 +27,4 @@ X device.current_humidity = 39
 - device.has_dehumidifier = false
 - device.dehumidifier_type = "unknown"
 - device.dehumidifier_state = false
-
-
-
---[[
-interesting fields:
-
-user[userid].structures			array	array of structure.structure_id strings
-
-link[serno].structure			string	the key to the structure this therm is in
-
-shared[serno].name                string    the thermostat's name
-shared[serno].hvac_ac_state	       boolean   if the AC is running
-shared[serno].hvac_heater_state		 boolean   if the heater is running
-shared[serno].hvac_fan_state	     boolean   if the fan is on
-shared[serno].target_temperature  number    what we're trying to heat/cool to
-shared[serno].current_temperature number    current temp in C
-shared[serno]["$version"]         number    might need it to set the temperature in X-nl-base-version header?
-
-device[serno].battery_level       number    voltage
-device[serno].serial_number	       string    redundant, really
-device[serno].leaf                boolean   maybe put a pretty leaf on the device UI?
-device[serno].fan_mode            string    "auto" or "on"
-device[serno].auto_away_reset	     boolean   ???
-device[serno].has_fan             boolean   so we don't toggle a non-existent fan
-device[serno].switch_system_off	   boolean   ???
-device[serno].current_humidity    number    would be nice to show it
-device[serno].temperature_scale	   string    F or C -- use Vera's setting instead
-
-structure[structure_id].away      boolean   to show the right icon and button
-structure[structure_id].devices	   array     array of device.serno strings
-structure[structure_id].name      string    name of the structure
-
-]]--
-
-    "state_icons": [
-        "nest_thermostat_0.png",
-        "nest_thermostat_25.png",
-        "nest_thermostat_50.png",
-        "nest_thermostat_75.png"
-    ],
-
-
-    <action>
-      <serviceId>urn:watou-com:serviceId:NestStructure1</serviceId>
-      <name>SetAwayStatus</name>
-      <run>
-        luup.variable_set(NEST_STRUCTURE_SID, "AwayStatus", lul_settings.AwayStatus or "2", lul_device)
-      </run>
-    </action>
-    <action>
-      <serviceId>urn:watou-com:serviceId:NestStructure1</serviceId>
-      <name>GetAwayStatus</name>
-      <run>
-        return luup.variable_get(NEST_STRUCTURE_SID, "AwayStatus", lul_device)
-      </run>
-    </action>
-
-  <actionList>
-    <action>
-      <name>SetAwayStatus</name>
-      <argumentList>
-        <argument>
-          <name>AwayStatus</name>
-          <direction>in</direction>
-        </argument>
-      </argumentList>
-    </action>
-    <action>
-      <name>GetAwayStatus</name>
-      <argumentList>
-        <argument>
-          <name>AwayStatus</name>
-          <direction>out</direction>
-        </argument>
-      </argumentList>
-    </action>
-  </actionList>
-
-
---[[
-          local ptr = nil
-          for k,v in pairs(res.structure) do
-            local child = findChild(PARENT_DEVICE, k)
-            if (child == nil) then
-              if (ptr == nil) then ptr = luup.chdev.start(PARENT_DEVICE) end
-              luup.chdev.append(PARENT_DEVICE, ptr, k, v.name, "urn:schemas-watou-com:device:NestStructure:1",
-                   "D_NestStructure1.xml", "",
-                   "urn:upnp-org:serviceId:HouseStatus1,OccupancyState=Indeterminate\n" ..
-                   "urn:watou-com:serviceId:NestStructure1,AwayStatus=1", false, false)
-            end
-          end
-          for k,v in pairs(res.shared) do
-            local child = findChild(PARENT_DEVICE, k)
-            if (child == nil) then
-              if (ptr == nil) then ptr = luup.chdev.start(PARENT_DEVICE) end
-              luup.chdev.append(PARENT_DEVICE, ptr, k, v.name, "urn:schemas-watou-com:device:NestThermostat:1",
-                   "D_NestThermostat1.xml", "",
-                   "urn:upnp-org:serviceId:TemperatureSensor1,CurrentTemperature=20", false, false)
-            end
-          end
-
-          if (ptr ~= nil) then
-            luup.chdev.sync(PARENT_DEVICE, ptr)
-          end
-]]--
-
 
