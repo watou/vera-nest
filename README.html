@@ -1,10 +1,10 @@
 <html>
 <head>
-<title>README for Vera Plugin for Nest Thermostats</title>
+<title>README for Vera Plugin for Nest Thermostats v0.7</title>
 
 <h1>Vera Plugin for Nest Thermostats</h1>
 
-<div align=center><img src=shot4.jpg></div>
+<div align=center><img src=shot5.jpg></div>
 
 <h2>PURPOSE</h2>
 
@@ -26,12 +26,10 @@
 <li>Shortly after saving your changes, the plugin will login to nest.com and retrieve all of the locations associated with your account, and all the thermostats within each location.  Since the Nest also contains a humidity sensor, the plugin also creates a humidistat device for each thermostat it discovers.</li>
 </ul>
 
-<h2>NOTES AND LIMITATIONS</h2>
+<h2>NOTES AND KNOWN LIMITATIONS</h2>
 
 <ul>
 <li>Only works with Vera UI5 1.5.408 or later.</li>
-
-<li>When a thermostat's current operating mode is AutoChangeOver, the current heat and cool setpoints reflect the allowed range as you would expect.  However, in the HeatOn or CoolOn operating modes, both the heat and cool setpoints reflect the same, single target temperature.  This is a side effect of the Nest's design.</li>
 
 <li>The plugin is based on an undocumented and unsupported interface to Nest, which may change or break or otherwise become inaccessible at any time.</li>
 
@@ -46,7 +44,7 @@
 
 <h2>LICENSE</h2>
 
-<p>Copyright (C) 2012  John W. Cocula</p>
+<p>Copyright &copy; 2012  John W. Cocula</p>
 
 <p>This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.</p>
 
@@ -74,6 +72,11 @@
 
 <ul>
 <li>2012-12-11    0.6   First beta release</li>
+<li>2012-12-11    0.7   Second beta release</li>
+<ul>
+  <li>Removed the special case where heat and cool setpoints would show the same value.</li>
+  <li>Fixed the plugin's inability to set the thermostat mode to Off.</li>
+</ul>
 </ul>
 
 </body>

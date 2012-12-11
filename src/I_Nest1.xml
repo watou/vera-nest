@@ -208,17 +208,17 @@ decompress_lzo_file() {
       [TEMP_SETPOINT_HEAT_SID] = {
         ["Application"] = function() return "Heating" end,
         ["CurrentSetpoint"] = function(shared, device)
-            return (shared.target_temperature_type == "range") and
-              tostring(localizeTemp(shared.target_temperature_low)) or
-              tostring(localizeTemp(shared.target_temperature))
+            return (shared.target_temperature_type == "heat") and
+              tostring(localizeTemp(shared.target_temperature)) or
+              tostring(localizeTemp(shared.target_temperature_low))
           end
       },
       [TEMP_SETPOINT_COOL_SID] = {
         ["Application"] = function() return "Cooling" end,
         ["CurrentSetpoint"] = function(shared, device)
-            return (shared.target_temperature_type == "range") and
-              tostring(localizeTemp(shared.target_temperature_high)) or
-              tostring(localizeTemp(shared.target_temperature))
+            return (shared.target_temperature_type == "cool") and
+              tostring(localizeTemp(shared.target_temperature)) or
+              tostring(localizeTemp(shared.target_temperature_high))
           end
       },
       [HUMIDITY_SENSOR_SID] = {
@@ -293,7 +293,7 @@ decompress_lzo_file() {
           if     (ModeTarget == "HeatOn")         then return "heat"
           elseif (ModeTarget == "CoolOn")         then return "cool"
           elseif (ModeTarget == "AutoChangeOver") then return "range"
-          elseif (ModeTarget == "off")            then return "off"
+          elseif (ModeTarget == "Off")            then return "off"
           end
         end
       }
@@ -574,11 +574,10 @@ decompress_lzo_file() {
       if (session == nil) then
         return false
       else
-        local target = "target_temperature"
-
-        if (luup.variable_get(HVAC_USER_SID, "ModeStatus", lul_device) == "AutoChangeOver") then
-          target = (serviceId == TEMP_SETPOINT_HEAT_SID) and "target_temperature_low" or "target_temperature_high"
-        end
+        local status = luup.variable_get(HVAC_USER_SID, "ModeStatus", lul_device)
+        local target = (serviceId == TEMP_SETPOINT_HEAT_SID) and
+                  ((status == "HeatOn") and "target_temperature" or "target_temperature_low") or
+                  ((status == "CoolOn") and "target_temperature" or "target_temperature_high")
 
         local thermostat_id = getThermostatId(luup.devices[lul_device].id)
         local res = {}
