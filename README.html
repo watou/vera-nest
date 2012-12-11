@@ -1,0 +1,81 @@
+<html>
+<head>
+<title>README for Vera Plugin for Nest Thermostats</title>
+
+<h1>Vera Plugin for Nest Thermostats</h1>
+
+<div align=center><img src=shot4.jpg></div>
+
+<h2>PURPOSE</h2>
+
+<p>Monitor and control your Nest thermostat(s) through your Vera home automation gateway.</p>
+
+
+<h2>FEATURES</h2>
+
+<ul>
+<li>Monitor thermostat mode, fan mode, current and set point temperatures, humidity level, running and idle states and battery level.</li>
+<li>Control temperature set points, thermostat mode, and fan mode.</li>
+<li>Set your house to Home or Away, switching all your Nest thermostats to an energy saving mode when unoccupied.</li>
+</ul>
+
+<h2>HOW TO USE</h2>
+
+<ul>
+<li>Open the settings for the Nest device that was created at plugin installation, and set your nest.com user name and password.  Also choose a polling frequency (in seconds) if you want to poll more or less often than the default 120 seconds.  You may not poll more often than every 60 seconds, as this might be considered abusive by the nest.com servers.</li>
+<li>Shortly after saving your changes, the plugin will login to nest.com and retrieve all of the locations associated with your account, and all the thermostats within each location.  Since the Nest also contains a humidity sensor, the plugin also creates a humidistat device for each thermostat it discovers.</li>
+</ul>
+
+<h2>NOTES AND LIMITATIONS</h2>
+
+<ul>
+<li>Only works with Vera UI5 1.5.408 or later.</li>
+
+<li>When a thermostat's current operating mode is AutoChangeOver, the current heat and cool setpoints reflect the allowed range as you would expect.  However, in the HeatOn or CoolOn operating modes, both the heat and cool setpoints reflect the same, single target temperature.  This is a side effect of the Nest's design.</li>
+
+<li>The plugin is based on an undocumented and unsupported interface to Nest, which may change or break or otherwise become inaccessible at any time.</li>
+
+<li>Updates to the state of the Location, Thermostat and Humidistat devices can take up to the polling number of seconds (120 by default) to be reflected in the UPnP devices (or as quickly as 5 seconds).  I am investigating a change that would make these updates much faster, but I cannot guarantee that this will be implemented.  In any case, I believe that the current approach will work for almost all users.</li>
+
+<li>BatteryLevel percentage is tied to a voltage range of 3.6 to 3.9 volts.  Any actual voltage below 3.6 is considered 0% and any voltage above 3.9 is considered 100%.  (Battery level may be important to some users, as the battery is charged by leeching power during heating or cooling.  If there is a problem, the battery level will continue to decline until the device turns off the proximity function, wi-fi and then itself.)</li>
+
+<li>The humidistat device currently only implements the humidity sensor service, but as the 2nd generation Nest thermostats can also control humidifers and dehumidifiers, this device type will be extended to implement new services.</li>
+
+<li>The "Home/Away" device implements urn:schemas-upnp-org:service:HouseStatus:1, but since I didn't find an S_HouseStatus1.xml file in my Vera, one is packaged with the plugin.</li>
+</ul>
+
+<h2>LICENSE</h2>
+
+<p>Copyright (C) 2012  John W. Cocula</p>
+
+<p>This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.</p>
+
+<p>This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.</p>
+
+<p>You should have received a copy of the GNU General Public License along with this program.  If not, see <a href="http://www.gnu.org/licenses/">http://www.gnu.org/licenses/</a></p>
+
+
+<h2>THANKS</h2>
+
+<p>futzle, garretwp, guessed, RichardTSchaefer and others for Vera plugin development support</p>
+
+
+<h2>PLANS (hopeful)</h2>
+
+<ul>
+<li>See about integrating historical energy usage data into the plugin.</li>
+<li>Have status updates arrive more quickly.</li>
+<li>Report the heating or cooling stage, since Nest supports multiple heating and cooling stages.</li>
+<li>More automation.</li>
+<li>Implement Humidistat functionality to control humidity from Vera.</li>
+</ul>
+
+<h2>HISTORY</h2>
+
+<ul>
+<li>2012-12-11    0.6   First beta release</li>
+</ul>
+
+</body>
+</html>
+
