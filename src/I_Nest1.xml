@@ -57,7 +57,9 @@ decompress_lzo_file() {
 
     local function task(text, mode)
       local mode = mode or TASK_ERROR
-      log("task: " .. text, 50)
+      if (mode ~= TASK_SUCCESS) then
+        log("task: " .. text, 50)
+      end
       taskHandle = luup.task(text, (mode == TASK_ERROR_PERM) and TASK_ERROR or mode, MSG_CLASS, taskHandle)
     end
 
@@ -110,7 +112,7 @@ decompress_lzo_file() {
 
     -- main functions
 
-    local PLUGIN_VERSION = "0.5"
+    local PLUGIN_VERSION = "0.8"
 
     local NEST_SID = "urn:watou-com:serviceId:Nest1"
     local NEST_STRUCTURE_SID = "urn:watou-com:serviceId:NestStructure1"
@@ -372,8 +374,6 @@ decompress_lzo_file() {
       if (code == 200) then
         res = json.decode(table.concat(res))
 
-        debug("Login response: " .. deepToString(res))
-
         data.transport_url = res.urls.transport_url
         data.userid = res.userid
         data.access_token = res.access_token
@@ -382,7 +382,6 @@ decompress_lzo_file() {
         saveSession(data.transport_url, data.userid, data.access_token)
         return data
       else
-        log("nest.com login failed with HTTP code=" .. tostring(code) .. ", status=" .. tstring(status))
         task("Failed to login: " .. tostring(status))
         clearSession()
       end
@@ -559,9 +558,7 @@ decompress_lzo_file() {
 		                  headers = headers }
         -- local https = require("ssl.https")
 
-        -- debug("structure_id = " .. structure_id .. ", transport_url = " .. session.transport_url .. ", access_token = " .. session.access_token)
         local one, code, headers, status = https.request(url)
-        -- debug("code = " .. code .. ", status = " .. status)
         return code == 200
       end
     end
@@ -628,7 +625,6 @@ decompress_lzo_file() {
                       headers = headers }
 
         local one, code, headers, status = https.request(url)
-        debug("setting target_temperature_type returned " .. tostring(status))
         return code == 200
       end
     end
@@ -654,10 +650,7 @@ decompress_lzo_file() {
                       source = ltn12.source.string(data),
                       sink = ltn12.sink.table(res),
                       headers = headers }
-        -- local https = require("ssl.https")
-        -- debug("thermostat_id = " .. thermostat_id .. ", transport_url = " .. session.transport_url .. ", access_token = " .. session.access_token)
         local one, code, headers, status = https.request(url)
-        -- debug("code = " .. code .. ", status = " .. status)
         return code == 200
       end
     end
