@@ -2,14 +2,11 @@ TODO
 
 Nest:
 
-- Find out how to create the singleton Nest device on plugin installation
-- Alter .png paths to match plugin packaging
-
 Thermostat:
 
 - fan mode and status to eventList2
-- finish implementing HaDevice -- which parts need to be implemented?
-- report the heating or cooling stage to the user -- expose in Thermostat service
+- finish implementing HaDevice -- which parts left need to be implemented?
+- report the heating or cooling stage to the user -- expose in Thermostat device
 
 Humidistat:
 

@@ -129,7 +129,7 @@ decompress_lzo_file() {
     local MCV_ENERGY_METERING_SID = "urn:micasaverde-com:serviceId:EnergyMetering1"
     local DEFAULT_POLL = 120
     local MIN_POLL = 60
-    local SOON = 5
+    local SOON = "5" -- seconds
     local NEST_UA = "Nest/1.1.0.10 CFNetwork/548.0.4"
     local NEST_BATTERY_LOW = 3.6
     local NEST_BATTERY_HIGH = 3.9
@@ -177,7 +177,7 @@ decompress_lzo_file() {
 
     -- convert thermostat format (C) to local format (C or F)
     local function localizeTemp(temperature)
-      return (veraTemperatureScale == "C") and temperature or
+      return (veraTemperatureScale == "C") and round(temperature, 1) or
              round(((temperature + 0.0) * 1.8) + 32, 1)
     end
 
@@ -387,8 +387,11 @@ decompress_lzo_file() {
       end
     end
 
-    local function getStatus()
+    local statusOutstanding = false
+    
+    function getStatus()
       debug("in getStatus()")
+      statusOutstanding = false
 
       local session = login()
 
@@ -665,13 +668,16 @@ decompress_lzo_file() {
       -- set up the next poll
       local period = readVariableOrInit(PARENT_DEVICE, NEST_SID, "period", tostring(DEFAULT_POLL))
       debug("polling device " .. PARENT_DEVICE .. " again in " .. period .. " seconds")
-      luup.call_timer("poll", 1, period)
+      luup.call_timer("poll", 1, period, "", "")
     end
 
     local function getStatusSoon()
-      luup.call_timer("poll", 1, tostring(SOON))
+      if (not statusOutstanding) then
+        luup.call_timer("getStatus", 1, SOON, "", "")
+        statusOutstanding = true
+      end
     end
-    
+
     function init(lul_device)
       log("plugin version " .. PLUGIN_VERSION .. " starting up...", 50)
 
@@ -688,7 +694,8 @@ decompress_lzo_file() {
       urlcode = require("L_nest_urlcode")
       require("ltn12")
 
-      getStatusSoon()
+      debug("polling device " .. PARENT_DEVICE .. " in " .. SOON .. " seconds")
+      luup.call_timer("poll", 1, SOON, "", "")
     end
   </functions>
   <startup>init</startup>

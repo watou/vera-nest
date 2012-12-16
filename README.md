@@ -10,7 +10,7 @@ This plugin will monitor and control your [Nest][] thermostat(s) through your [V
 
 ## Features ##
 
-* Monitor thermostat mode, fan mode, current and set point temperatures, humidity level, running and idle states and battery level.
+* Monitor thermostat mode, fan mode, current and set point temperatures, humidity level, running states, battery level and "home/away" status.
 
 * Control temperature set points, thermostat mode and fan mode.
 
@@ -34,7 +34,7 @@ Shortly after saving your changes, the plugin will login to `nest.com` and retri
 
 * Only works with Vera UI5 1.5.408 or later.
 
-* The plugin is based on an unsupported interface to Nest, which may change or break or otherwise become inaccessible at any time.
+* The plugin is based on an unsupported interface to Nest, which may break or otherwise become inaccessible at any time.
 
 * Updates to the state of the location, thermostat and humidistat devices can take up to the polling number of seconds (120 by default) to be reflected in the UPnP devices (or as quickly as 5 seconds).  I believe that the current approach will work for almost all users, but please [contact me][me] if you have different needs.
 
@@ -48,6 +48,8 @@ Shortly after saving your changes, the plugin will login to `nest.com` and retri
 
 * The "Home/Away" device implements `urn:schemas-upnp-org:service:HouseStatus:1`, but since I didn't find an `S_HouseStatus1.xml` file in my Vera, one is packaged with the plugin.
 
+* The thermostat device creates the `UserSuppliedWattage` variable, set initially to `0,0,0`, but it doesn't yet do anything else to implement the `urn:micasaverde-com:serviceId:EnergyMetering1` service.
+
 ## License ##
 
 Copyright &copy; 2012  John W. Cocula
@@ -60,7 +62,16 @@ You should have received a copy of the GNU General Public License along with thi
 
 ## Feedback  ##
 
-Please contact me through the [micasaverde.com forum][me].
+Please contact me through the [micasaverde.com forum][me].  If you're feeling thankful and want to donate to my efforts, I will gratefully accept your kind generosity.
+
+<div  style="text-align:center">
+<form action="https://www.paypal.com/cgi-bin/webscr" method="post">
+<input type="hidden" name="cmd" value="_s-xclick">
+<input type="hidden" name="hosted_button_id" value="ZX4FRDJ5PDRTG">
+<input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif" border="0" name="submit" alt="PayPal - The safer, easier way to pay online!">
+<img alt="" border="0" src="https://www.paypalobjects.com/en_US/i/scr/pixel.gif" width="1" height="1">
+</form>
+</div>
 
 ## Thanks ##
 
@@ -76,8 +87,10 @@ Please contact me through the [micasaverde.com forum][me].
 
 ## History ##
 
-### 201x-xx-xx    v0.8
-* Removed `Clearing...` log message from every poll and other log/debug cleanup
+### 2012-12-15    v0.8
+* Decreased the potential for excessive status polling.
+* Removed `Clearing...` log message from every poll and other log/debug cleanup.
+* Rounded incoming Celsius degrees just like Fahrenheit.  (Sorry for loss of precision; see <http://forum.micasaverde.com/index.php?topic=6133.5>.)
 
 ### 2012-12-11    v0.7
 * Removed the special case where heat and cool setpoints would show the same value.
