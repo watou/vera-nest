@@ -1,6 +1,6 @@
 <!--	Vera Plugin for Nest Thermostats	-->
 
-![Devices in Vera](shot5.jpg)
+![Devices in Vera](http://cocu.la/vera/nest/shot5.jpg)
 
 ## Purpose ##
 This plugin will monitor and control your [Nest][] thermostat(s) through your [Vera][] home automation gateway.
@@ -87,7 +87,7 @@ Please contact me through the [micasaverde.com forum][me].  All tips are gratefu
 
 ## History ##
 
-### 201X-XX-XX    v0.9
+### 2012-12-27    v0.9
 * Only set device variables if they have changed (to decrease log output)
 * Set the `urn:micasaverde-com:serviceId:HaDevice1` variable `LastUpdate` for the location, thermostat and humidistat devices.  For the location device, this is the Unix timestamp most recently retrieved from `nest.com` for that location's status.  For the thermostat and humidistat devices, `LastUpdate` (and `BatteryDate`) are the Unix timestamp from `nest.com` (also without any synchronization to the Vera's clock) that indicates the last time the thermostat connected to `nest.com`.
 
