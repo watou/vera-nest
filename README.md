@@ -46,7 +46,7 @@ Shortly after saving your changes, the plugin will login to `nest.com` and retri
 
 [2g]: http://nest.com/blog/2012/10/02/the-next-generation-nest-thermostat/
 
-* The "Home/Away" device implements `urn:schemas-upnp-org:service:HouseStatus:1`, but since I didn't find an `S_HouseStatus1.xml` file in my Vera, one is packaged with the plugin.
+* The "Home/Away" device implements `urn:schemas-upnp-org:service:HouseStatus:1`, but since I didn't find an `S_HouseStatus1.xml` file in my Vera, one is packaged with the plugin. (This device also implements `urn:schemas-upnp-org:service:SwitchPower:1`.)
 
 * The thermostat device creates the `UserSuppliedWattage` variable, set initially to `0,0,0`, but it doesn't yet do anything else to implement the `urn:micasaverde-com:serviceId:EnergyMetering1` service.
 
@@ -62,7 +62,7 @@ You should have received a copy of the GNU General Public License along with thi
 
 ## Feedback  ##
 
-Please contact me through the [micasaverde.com forum][me].  If you're feeling thankful and want to donate to my efforts, I will gratefully accept your kind generosity.
+Please contact me through the [micasaverde.com forum][me].  All tips are gratefully accepted!
 
 <div  style="text-align:center">
 <form action="https://www.paypal.com/cgi-bin/webscr" method="post">
@@ -86,6 +86,10 @@ Please contact me through the [micasaverde.com forum][me].  If you're feeling th
 * Implement Humidistat functionality to control humidity from Vera.
 
 ## History ##
+
+### 201X-XX-XX    v0.9
+* Only set device variables if they have changed (to decrease log output)
+* Set the `urn:micasaverde-com:serviceId:HaDevice1` variable `LastUpdate` for the location, thermostat and humidistat devices.  For the location device, this is the Unix timestamp most recently retrieved from `nest.com` for that location's status.  For the thermostat and humidistat devices, `LastUpdate` (and `BatteryDate`) are the Unix timestamp from `nest.com` (also without any synchronization to the Vera's clock) that indicates the last time the thermostat connected to `nest.com`.
 
 ### 2012-12-15    v0.8
 * Decreased the potential for excessive status polling.

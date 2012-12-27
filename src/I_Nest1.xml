@@ -89,17 +89,27 @@ decompress_lzo_file() {
       end
     end
 
-    function readVariableOrInit(lul_device, devicetype, name, defaultValue) 
-      local var = luup.variable_get(devicetype,name, lul_device)
+    local function readVariableOrInit(lul_device, serviceId, name, defaultValue) 
+      local var = luup.variable_get(serviceId, name, lul_device)
       if (var == nil) then
         var = defaultValue
-        luup.variable_set(devicetype,name,var,lul_device)
+        luup.variable_set(serviceId, name, var, lul_device)
       end
       return var
     end
 
-    function writeVariable(lul_device,devicetype, name, value) 
-      luup.variable_set(devicetype,name,value,lul_device)
+    local function writeVariable(lul_device, serviceId, name, value) 
+      luup.variable_set(serviceId, name, value, lul_device)
+    end
+
+    local function writeVariableIfChanged(lul_device, serviceId, name, value)
+      local curValue = luup.variable_get(serviceId, name, lul_device)
+      if (value ~= curValue) then
+        writeVariable(lul_device, serviceId, name, value)
+        return true
+      else
+        return false
+      end
     end
 
     local function findChild(deviceId, label)
@@ -112,7 +122,7 @@ decompress_lzo_file() {
 
     -- main functions
 
-    local PLUGIN_VERSION = "0.8"
+    local PLUGIN_VERSION = "0.9"
 
     local NEST_SID = "urn:watou-com:serviceId:Nest1"
     local NEST_STRUCTURE_SID = "urn:watou-com:serviceId:NestStructure1"
@@ -266,9 +276,12 @@ decompress_lzo_file() {
             return tostring(math.floor(percent))
           end
         end,
-       ["BatteryDate"] = function(shared, device)
-          return (device["$timestamp"] and tonumber(device["$timestamp"])) and
-            tostring(math.floor(device["$timestamp"]/1000)) or tostring(os.time())
+       ["BatteryDate"] = function(track)
+          return tostring(math.floor(track.last_connection / 1000))
+        end,
+       ["LastUpdate"] = function(track, structure)
+         if     (type(track) == "table") then     return tostring(math.floor(track.last_connection / 1000))
+         elseif (type(structure) == "table") then return tostring(math.floor(structure["$timestamp"] / 1000)) end
         end
       },
       [MCV_ENERGY_METERING_SID] = {
@@ -284,8 +297,12 @@ decompress_lzo_file() {
       return serviceId .. "," .. variableName .. "=" .. nestToUpnp(serviceId, variableName, ...)
     end
 
-    local function writeVariableFromNest(lul_device, devicetype, name, ...)
-      writeVariable(lul_device, devicetype, name, nestToUpnp(devicetype, name, ...))
+    local function writeVariableFromNest(lul_device, serviceId, name, ...)
+      writeVariable(lul_device, serviceId, name, nestToUpnp(serviceId, name, ...))
+    end
+
+    local function writeVariableFromNestIfChanged(lul_device, serviceId, name, ...)
+      return writeVariableIfChanged(lul_device, serviceId, name, nestToUpnp(serviceId, name, ...))
     end
 
     -- convert UPnP values to Nest values
@@ -339,7 +356,7 @@ decompress_lzo_file() {
     -- login to nest.com if we think we need to
     -- return a loginSettings table on success or nil
     local function login()
-      debug("in login()")
+      -- debug("in login()")
 
       local data = readSettings()
 
@@ -390,7 +407,7 @@ decompress_lzo_file() {
     local statusOutstanding = false
     
     function getStatus()
-      debug("in getStatus()")
+      -- debug("in getStatus()")
       statusOutstanding = false
 
       local session = login()
@@ -434,6 +451,7 @@ decompress_lzo_file() {
                  "\n" .. nestToUpnpParam(NEST_STRUCTURE_SID, "Location", v) ..
                  "\n" .. nestToUpnpParam(NEST_STRUCTURE_SID, "PostalCode", v) ..
                  "\n" .. nestToUpnpParam(NEST_STRUCTURE_SID, "CountryCode", v) ..
+                 "\n" .. nestToUpnpParam(HA_DEVICE_SID, "LastUpdate", nil, v) ..
                  "\n" .. nestToUpnpParam(SWITCH_POWER_SID, "Status", v)
                  , false, false)
           end
@@ -443,6 +461,7 @@ decompress_lzo_file() {
               added = added + 1
             end
             local dev = res.device[k]
+            local track = res.track[k]
             luup.chdev.append(PARENT_DEVICE, ptr, altid, v.name, "urn:schemas-watou-com:device:HVAC_ZoneThermostat:1",
                  "D_NestThermostat1.xml", "",
                          nestToUpnpParam(TEMP_SENSOR_SID, "CurrentTemperature", v, dev) ..
@@ -453,7 +472,8 @@ decompress_lzo_file() {
                  "\n" .. nestToUpnpParam(HVAC_USER_SID, "ModeStatus", v, dev) ..
                  "\n" .. nestToUpnpParam(HVAC_STATE_SID, "ModeState", v, dev) ..
                  "\n" .. nestToUpnpParam(HA_DEVICE_SID, "BatteryLevel", v, dev) ..
-                 "\n" .. nestToUpnpParam(HA_DEVICE_SID, "BatteryDate", v, dev) ..
+                 "\n" .. nestToUpnpParam(HA_DEVICE_SID, "BatteryDate", track) ..
+                 "\n" .. nestToUpnpParam(HA_DEVICE_SID, "LastUpdate", track) ..
                  "\n" .. nestToUpnpParam(MCV_ENERGY_METERING_SID, "UserSuppliedWattage", v, dev)
                  , false, false)
           end
@@ -462,10 +482,10 @@ decompress_lzo_file() {
             if (findChild(PARENT_DEVICE, altid) == nil) then
               added = added + 1
             end
-            local dev = res.device[k]
             luup.chdev.append(PARENT_DEVICE, ptr, altid, v.name, "urn:schemas-watou-com:device:NestHumidistat:1",
                  "D_NestHumidistat1.xml", "",
-                 nestToUpnpParam(HUMIDITY_SENSOR_SID, "CurrentLevel", v, dev)
+                         nestToUpnpParam(HUMIDITY_SENSOR_SID, "CurrentLevel", v, res.device[k]) ..
+                 "\n" .. nestToUpnpParam(HA_DEVICE_SID, "LastUpdate", res.track[k])
                  , false, false)
           end
 
@@ -486,8 +506,9 @@ decompress_lzo_file() {
               if (luup.attr_get("category_num", child) ~= "3") then
                 luup.attr_set("category_num", "3", child)
               end
-              writeVariableFromNest(child, HOUSE_STATUS_SID, "OccupancyState", v)
-              writeVariableFromNest(child, SWITCH_POWER_SID, "Status", v)
+              writeVariableFromNestIfChanged(child, HOUSE_STATUS_SID, "OccupancyState", v)
+              writeVariableFromNestIfChanged(child, SWITCH_POWER_SID, "Status", v)
+              writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "LastUpdate", nil, v)
             end
           end
 
@@ -501,23 +522,19 @@ decompress_lzo_file() {
               if (luup.attr_get("category_num", child) ~= "5") then
                 luup.attr_set("category_num", "5", child)
               end
-              
-              --[[debug("target_temperature/_high/_low/_type=" .. 
-                  tostring(v.target_temperature) .. "/" .. 
-                  tostring(v.target_temperature_high) .. "/" ..
-                  tostring(v.target_temperature_low) .. "/" ..
-                  tostring(v.target_temperature_type)) --]]
 
               local dev = res.device[k]
-              writeVariableFromNest(child, TEMP_SENSOR_SID, "CurrentTemperature", v, dev)
-              writeVariableFromNest(child, TEMP_SETPOINT_HEAT_SID, "CurrentSetpoint", v, dev)
-              writeVariableFromNest(child, TEMP_SETPOINT_COOL_SID, "CurrentSetpoint", v, dev)
-              writeVariableFromNest(child, HVAC_FAN_SID, "Mode", v, dev)
-              writeVariableFromNest(child, HVAC_FAN_SID, "FanStatus", v, dev)
-              writeVariableFromNest(child, HVAC_USER_SID, "ModeStatus", v, dev)
-              writeVariableFromNest(child, HVAC_STATE_SID, "ModeState", v, dev)
-              writeVariableFromNest(child, HA_DEVICE_SID, "BatteryLevel", v, dev)
-              writeVariableFromNest(child, HA_DEVICE_SID, "BatteryDate", v, dev)
+              local track = res.track[k]
+              writeVariableFromNestIfChanged(child, TEMP_SENSOR_SID, "CurrentTemperature", v, dev)
+              writeVariableFromNestIfChanged(child, TEMP_SETPOINT_HEAT_SID, "CurrentSetpoint", v, dev)
+              writeVariableFromNestIfChanged(child, TEMP_SETPOINT_COOL_SID, "CurrentSetpoint", v, dev)
+              writeVariableFromNestIfChanged(child, HVAC_FAN_SID, "Mode", v, dev)
+              writeVariableFromNestIfChanged(child, HVAC_FAN_SID, "FanStatus", v, dev)
+              writeVariableFromNestIfChanged(child, HVAC_USER_SID, "ModeStatus", v, dev)
+              writeVariableFromNestIfChanged(child, HVAC_STATE_SID, "ModeState", v, dev)
+              writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "BatteryLevel", v, dev)
+              writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "BatteryDate", track)
+              writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "LastUpdate", track)
             end
           end
           for k,v in pairs(res.shared) do
@@ -530,8 +547,8 @@ decompress_lzo_file() {
               if (luup.attr_get("category_num", child) ~= "16") then
                 luup.attr_set("category_num", "16", child)
               end
-              local dev = res.device[k]
-              writeVariableFromNest(child, HUMIDITY_SENSOR_SID, "CurrentLevel", v, dev)
+              writeVariableFromNestIfChanged(child, HUMIDITY_SENSOR_SID, "CurrentLevel", v, res.device[k])
+              writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "LastUpdate", res.track[k])
             end
           end
         end
@@ -659,7 +676,7 @@ decompress_lzo_file() {
     end
 
     function poll()
-      debug("in poll()")
+      -- debug("in poll()")
 
       task("Clearing...", TASK_SUCCESS)
 
