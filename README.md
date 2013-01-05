@@ -52,7 +52,7 @@ Shortly after saving your changes, the plugin will login to `nest.com` and retri
 
 ## License ##
 
-Copyright &copy; 2012  John W. Cocula
+Copyright &copy; 2012  John W. Cocula and others
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
@@ -76,6 +76,7 @@ Please contact me through the [micasaverde.com forum][me].  All tips are gratefu
 ## Thanks ##
 
 `futzle`, `garretwp`, `guessed`, `RichardTSchaefer` and others on the forum for their kind assistance.
+`hugheaves` for his `decompressScript` shell script workaround for the problem with deploying compressed modules and for providing his open-source plugin for a different make/model thermostat.
 
 ## Future Plans ##
 
