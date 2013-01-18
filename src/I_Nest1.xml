@@ -385,7 +385,7 @@ decompress_lzo_file() {
         saveSession(data.transport_url, data.userid, data.access_token)
         return data
       else
-        task("Failed to login: " .. tostring(status))
+        task("Failed to login: code=" .. tostring(code) .. ", status=" .. tostring(status))
         clearSession()
       end
     end

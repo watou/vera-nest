@@ -732,6 +732,62 @@
                     }
                 }
             ]
+        },
+        {
+            "id": 8,
+            "label": {
+                "lang_tag": "thermostat_heat_point_goes_below",
+                "text": "Thermostat HEAT set point goes below"
+            },
+            "serviceId": "urn:upnp-org:serviceId:TemperatureSetpoint1_Heat",
+            "argumentList": [
+                {
+                    "id": 1,
+                    "dataType": "i4",
+                    "name": "CurrentSetpoint",
+                    "comparisson": "<",
+                    "prefix": {
+                        "lang_tag": "temperature",
+                        "text": "Temperature"
+                    },
+                    "suffix": {
+                        "lang_tag": "degrees",
+                        "text": "degrees"
+                    },
+                    "HumanFriendlyText": {
+                        "lang_tag": "hft_thermostat_heatpoint_goes_below",
+                        "text": "_DEVICE_NAME_ heat point goes below _ARGUMENT_VALUE_ degrees"
+                    }
+                }
+            ]
+        },
+        {
+            "id": 9,
+            "label": {
+                "lang_tag": "thermostat_coolpoint_goes_over",
+                "text": "Thermostat COOL set point goes over"
+            },
+            "serviceId": "urn:upnp-org:serviceId:TemperatureSetpoint1_Cool",
+            "argumentList": [
+                {
+                    "id": 1,
+                    "dataType": "i4",
+                    "name": "CurrentSetpoint",
+                    "comparisson": ">",
+                    "prefix": {
+                        "lang_tag": "temperature",
+                        "text": "Temperature"
+                    },
+                    "suffix": {
+                        "lang_tag": "degrees",
+                        "text": "degrees"
+                    },
+                    "HumanFriendlyText": {
+                        "lang_tag": "hft_thermostat_coolpoint_goes_over",
+                        "text": "_DEVICE_NAME_ cool point goes over _ARGUMENT_VALUE_ degrees"
+                    }
+                }
+            ]
         }
     ],
     "DeviceType": "urn:schemas-watou-com:device:HVAC_ZoneThermostat:1",
