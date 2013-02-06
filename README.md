@@ -1,6 +1,6 @@
 <!--	Vera Plugin for Nest Thermostats	-->
 
-![Devices in Vera](http://cocu.la/vera/nest/shot5.jpg)
+![Devices in Vera](http://cocu.la/vera/nest/shot6.jpg)
 
 ## Purpose ##
 This plugin will monitor and control your [Nest][] thermostat(s) through your [Vera][] home automation gateway.
@@ -91,7 +91,7 @@ Please contact me through the [micasaverde.com forum][me].  All tips are gratefu
 ## History ##
 
 ### 2013-02-XX    v1.0
-* Added variable text to the device in the Vera UI that shows the current ModeState for the HVAC system.  Possible values are `Off`, `Idle`, `Heating`, `Cooling` and `FanOnly`. [iss16](https://github.com/watou/vera-nest-thermostat/issues/16)
+* Added variable text under the setpoint sliders that shows the current ModeState for the HVAC system.  Possible values are `Off`, `Idle`, `Heating`, `Cooling` and `FanOnly`. [iss16](https://github.com/watou/vera-nest-thermostat/issues/16)
 
 
 ### 2012-12-27    v0.9
