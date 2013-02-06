@@ -90,6 +90,10 @@ Please contact me through the [micasaverde.com forum][me].  All tips are gratefu
 
 ## History ##
 
+### 2013-02-XX    v1.0
+* Added variable text to the device in the Vera UI that shows the current ModeState for the HVAC system.  Possible values are `Off`, `Idle`, `Heating`, `Cooling` and `FanOnly`. [iss16](https://github.com/watou/vera-nest-thermostat/issues/16)
+
+
 ### 2012-12-27    v0.9
 * Only set device variables if they have changed (to decrease log output)
 * Set the `urn:micasaverde-com:serviceId:HaDevice1` variable `LastUpdate` for the location, thermostat and humidistat devices.  For the location device, this is the Unix timestamp most recently retrieved from `nest.com` for that location's status.  For the thermostat and humidistat devices, `LastUpdate` (and `BatteryDate`) are the Unix timestamp from `nest.com` (also without any synchronization to the Vera's clock) that indicates the last time the thermostat connected to `nest.com`.

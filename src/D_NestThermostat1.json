@@ -71,6 +71,10 @@
                 {
                     "id": "6",
                     "scenegroup": "6"
+                },
+                {
+                    "id": "8",
+                    "scenegroup": "8"
                 }
             ],
             "SceneGroup": [
@@ -101,6 +105,13 @@
                     "left": "2.5",
                     "x": "0.5",
                     "y": "3"
+                },
+                {
+                    "id": "8",
+                    "top": "3",
+                    "left": "2",
+                    "x": "1",
+                    "y": "1"
                 }
             ],
             "Control": [
@@ -309,7 +320,7 @@
                         "Top": 60,
                         "Left": 30,
                         "Width": 100,
-                        "Height": 20
+                        "Height": 25
                     }
                 },
                 {
@@ -372,6 +383,22 @@
                     },
                     "ControlCode": "fan_on"
                 },
+                {
+                    "ControlGroup": "8",
+                    "ControlType": "variable",
+                    "top": "0.2",
+                    "left": "0",
+                    "Display": {
+                        "Top": 120,
+                        "Left": 500,
+                        "Width": 100,
+                        "Height": 25,
+                        "Service": "urn:micasaverde-com:serviceId:HVAC_OperatingState1",
+                        "Variable": "ModeState",
+                        "Value": "Idle"
+                    },
+					"ControlCode": "hvac_state"
+                }
             ]
         },
         {
