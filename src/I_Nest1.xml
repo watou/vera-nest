@@ -88,14 +88,13 @@ decompress_lzo_file() {
       luup.variable_set(serviceId, name, value, lul_device)
     end
 
+    local Logging = 0
     local function writeVariableIfChanged(lul_device, serviceId, name, value)
       local curValue = luup.variable_get(serviceId, name, lul_device)
-      if (value ~= curValue) then
+      if (Logging == 1) or (value ~= curValue) then
         writeVariable(lul_device, serviceId, name, value)
-        return true
-      else
-        return false
       end
+      return value ~= curValue
     end
 
     local function findChild(deviceId, label)
@@ -690,6 +689,13 @@ decompress_lzo_file() {
       end
 
       PARENT_DEVICE = lul_device
+
+      Logging = tonumber(readVariableOrInit(PARENT_DEVICE, NEST_SID, "Logging", "0"))
+      Logging = Logging or 0
+      if Logging &lt; 0 or Logging &gt; 1 then
+        Logging = 0
+      end
+      debug("Logging is set to " .. Logging)
 
       getVeraTemperatureScale()
 
