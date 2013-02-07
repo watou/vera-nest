@@ -91,7 +91,10 @@ Please contact me through the [micasaverde.com forum][me].  All tips are gratefu
 ## History ##
 
 ### 2013-02-XX    v1.0
-* Added variable text under the setpoint sliders that shows the current ModeState for the HVAC system.  Possible values are `Off`, `Idle`, `Heating`, `Cooling` and `FanOnly`. [iss16](https://github.com/watou/vera-nest-thermostat/issues/16)
+* [iss#10](https://github.com/watou/vera-nest-thermostat/issues/10) improve task message on login failure
+* [iss#11](https://github.com/watou/vera-nest-thermostat/issues/11) Triggers needed for setting heat/cool setpoints in the other direction
+* [iss#15](https://github.com/watou/vera-nest-thermostat/issues/15) Added a `Logging` variable to the main Nest account device to increase log output
+* [iss#16](https://github.com/watou/vera-nest-thermostat/issues/16) Added variable text under the setpoint sliders that shows the current ModeState
 
 
 ### 2012-12-27    v0.9
