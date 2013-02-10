@@ -549,7 +549,7 @@ decompress_lzo_file() {
         return false
       else
         local res = {}
-        local data = '{"away_timestamp":' .. tostring(os.time()) .. ',"away":' .. tostring(away) .. ',"away_setter":0}'
+        local data = '{"away_timestamp":' .. tostring(os.time()*1000) .. ',"away":' .. tostring(away) .. ',"away_setter":0}'
         local headers = {["user-agent"] = NEST_UA,
 		                     ["Authorization"] = "Basic " .. session.access_token,
 		                     ["X-nl-protocol-version"] = "1",
