@@ -94,12 +94,11 @@ Please contact me through the [micasaverde.com forum][me].  All tips are gratefu
 
 Fixed issues:
 
-* Send away_timestamp is in milliseconds, not seconds ([#9](https://github.com/watou/vera-nest-thermostat/issues/9))
-* Improve task message on login failue ([#10](https://github.com/watou/vera-nest-thermostat/issues/10))
+* Send away_timestamp in milliseconds, not seconds ([#9](https://github.com/watou/vera-nest-thermostat/issues/9))
+* Improve task message on login failure ([#10](https://github.com/watou/vera-nest-thermostat/issues/10))
 * Triggers needed for setting heat/cool setpoints in the other direction ([#11](https://github.com/watou/vera-nest-thermostat/issues/11))
 * Added a `Logging` variable to the main Nest account device to increase log output ([#15](https://github.com/watou/vera-nest-thermostat/issues/15))
 * Added variable text under the setpoint sliders that shows the current ModeState ([#16](https://github.com/watou/vera-nest-thermostat/issues/16))
-* Icons do not appear (broken image links) in Dashboard/Overview screen ([#17](https://github.com/watou/vera-nest-thermostat/issues/17))
 
 
 ### 2012-12-27    v0.9
