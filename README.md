@@ -90,7 +90,7 @@ Please contact me through the [micasaverde.com forum][me].  All tips are gratefu
 
 ## History ##
 
-### 2013-02-XX    v1.0
+### 2013-02-13    v1.0
 
 Fixed issues:
 
@@ -99,7 +99,6 @@ Fixed issues:
 * Triggers needed for setting heat/cool setpoints in the other direction ([#11](https://github.com/watou/vera-nest-thermostat/issues/11))
 * Added a `Logging` variable to the main Nest account device to increase log output ([#15](https://github.com/watou/vera-nest-thermostat/issues/15))
 * Added variable text under the setpoint sliders that shows the current ModeState ([#16](https://github.com/watou/vera-nest-thermostat/issues/16))
-
 
 ### 2012-12-27    v0.9
 * Only set device variables if they have changed (to decrease log output)
