@@ -90,6 +90,12 @@ Please contact me through the [micasaverde.com forum][me].  All tips are gratefu
 
 ## History ##
 
+### 2013-04-06    v1.1
+
+Fixed issue:
+
+* The Home/Away command stopped working ([#19](https://github.com/watou/vera-nest-thermostat/issues/19))
+
 ### 2013-02-13    v1.0
 
 Fixed issues:
