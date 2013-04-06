@@ -564,6 +564,17 @@ decompress_lzo_file() {
         -- local https = require("ssl.https")
 
         local one, code, headers, status = https.request(url)
+        if code == 302 then
+          debug("redirecting...")
+          if headers.location then
+            url.url = headers.location
+            url.source = ltn12.source.string(data)
+            url.create = nil
+            one, code, headers, status = https.request(url)
+          else
+            log("asked to redirect but no location given")
+          end
+        end
         return code == 200
       end
     end
