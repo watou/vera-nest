@@ -107,7 +107,7 @@ decompress_lzo_file() {
 
     -- main functions
 
-    local PLUGIN_VERSION = "1.0"
+    local PLUGIN_VERSION = "1.1"
 
     local NEST_SID = "urn:watou-com:serviceId:Nest1"
     local NEST_STRUCTURE_SID = "urn:watou-com:serviceId:NestStructure1"
