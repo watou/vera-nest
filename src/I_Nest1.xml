@@ -107,7 +107,7 @@ decompress_lzo_file() {
 
     -- main functions
 
-    local PLUGIN_VERSION = "1.1"
+    local PLUGIN_VERSION = "1.15"
 
     local NEST_SID = "urn:watou-com:serviceId:Nest1"
     local NEST_STRUCTURE_SID = "urn:watou-com:serviceId:NestStructure1"
@@ -549,7 +549,7 @@ decompress_lzo_file() {
         return false
       else
         local res = {}
-        local data = '{"away_timestamp":' .. tostring(os.time()*1000) .. ',"away":' .. tostring(away) .. ',"away_setter":0}'
+        local data = '{"away_timestamp":' .. tostring(os.time()) .. '000,"away":' .. tostring(away) .. ',"away_setter":0}'
         local headers = {["user-agent"] = NEST_UA,
 		                     ["Authorization"] = "Basic " .. session.access_token,
 		                     ["X-nl-protocol-version"] = "1",
@@ -562,8 +562,13 @@ decompress_lzo_file() {
 		                  sink = ltn12.sink.table(res),
 		                  headers = headers }
         -- local https = require("ssl.https")
-
         local one, code, headers, status = https.request(url)
+        if code ~= 200 then
+          log("away failed, code=" .. tostring(code) .. "status=" .. tostring(status))
+          log("data=" .. data)
+          for k,v in pairs(headers) do log("headers." .. k .. "=" .. tostring(v)) end
+          for k,v in pairs(url)     do log("url." .. k .. "=" .. tostring(v)) end
+        end
         if code == 302 then
           debug("redirecting...")
           if headers.location then
