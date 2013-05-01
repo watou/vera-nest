@@ -563,12 +563,6 @@ decompress_lzo_file() {
 		                  headers = headers }
         -- local https = require("ssl.https")
         local one, code, headers, status = https.request(url)
-        if code ~= 200 then
-          log("away failed, code=" .. tostring(code) .. "status=" .. tostring(status))
-          log("data=" .. data)
-          for k,v in pairs(headers) do log("headers." .. k .. "=" .. tostring(v)) end
-          for k,v in pairs(url)     do log("url." .. k .. "=" .. tostring(v)) end
-        end
         if code == 302 then
           debug("redirecting...")
           if headers.location then
