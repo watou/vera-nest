@@ -107,7 +107,7 @@ decompress_lzo_file() {
 
     -- main functions
 
-    local PLUGIN_VERSION = "1.15"
+    local PLUGIN_VERSION = "1.2"
 
     local NEST_SID = "urn:watou-com:serviceId:Nest1"
     local NEST_STRUCTURE_SID = "urn:watou-com:serviceId:NestStructure1"
@@ -223,7 +223,8 @@ decompress_lzo_file() {
       },
       [HVAC_FAN_SID] = {
         ["Mode"] = function(shared, device)
-          if     (device.fan_mode == "on") then return "ContinuousOn"
+          if not device.has_fan then return "Off"
+          elseif (device.fan_mode == "on") then return "ContinuousOn"
           elseif (device.fan_mode == "auto") then return "Auto"
           else return "Auto"
           end
@@ -251,6 +252,13 @@ decompress_lzo_file() {
         end
       },
       [HA_DEVICE_SID] = {
+        ["Commands"] = function(shared, device)
+          local commands = "hvac_off,hvac_auto,hvac_cool,hvac_heat,heating_setpoint,cooling_setpoint,hvac_state"
+          if device.has_fan then
+            commands = commands .. ",fan_label,fan_auto,fan_on"
+          end
+          return commands
+        end,
         ["BatteryLevel"] = function(shared, device)
           local volts = tonumber(device.battery_level)
           if (volts == nil) then return "0"
@@ -456,6 +464,7 @@ decompress_lzo_file() {
                  "\n" .. nestToUpnpParam(HVAC_FAN_SID, "FanStatus", v, dev) ..
                  "\n" .. nestToUpnpParam(HVAC_USER_SID, "ModeStatus", v, dev) ..
                  "\n" .. nestToUpnpParam(HVAC_STATE_SID, "ModeState", v, dev) ..
+                 "\n" .. nestToUpnpParam(HA_DEVICE_SID, "Commands", v, dev) ..
                  "\n" .. nestToUpnpParam(HA_DEVICE_SID, "BatteryLevel", v, dev) ..
                  "\n" .. nestToUpnpParam(HA_DEVICE_SID, "BatteryDate", track) ..
                  "\n" .. nestToUpnpParam(HA_DEVICE_SID, "LastUpdate", track) ..
@@ -517,6 +526,7 @@ decompress_lzo_file() {
               writeVariableFromNestIfChanged(child, HVAC_FAN_SID, "FanStatus", v, dev)
               writeVariableFromNestIfChanged(child, HVAC_USER_SID, "ModeStatus", v, dev)
               writeVariableFromNestIfChanged(child, HVAC_STATE_SID, "ModeState", v, dev)
+              writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "Commands", v, dev)
               writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "BatteryLevel", v, dev)
               writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "BatteryDate", track)
               writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "LastUpdate", track)

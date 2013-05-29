@@ -90,6 +90,13 @@ Please contact me through the [micasaverde.com forum][me].  All tips are gratefu
 
 ## History ##
 
+### 2013-0X-XX    v1.2
+
+Fixed issues:
+
+* Setting home/away fails on Vera2 ([#21](https://github.com/watou/vera-nest-thermostat/issues/21))
+* Detect when there is no fan installed ([#24](https://github.com/watou/vera-nest-thermostat/issues/24))
+
 ### 2013-04-06    v1.1
 
 Fixed issue:
