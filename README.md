@@ -94,6 +94,7 @@ Please contact me through the [micasaverde.com forum][me].  All tips are gratefu
 
 Fixed issues:
 
+* Run state-changing UPnP actions as jobs asynchronously to avoid potential for hangs if there is a network problem ([#20](https://github.com/watou/vera-nest-thermostat/issues/20)) (I've never heard a report of this happening.)
 * Setting home/away fails on Vera2 ([#21](https://github.com/watou/vera-nest-thermostat/issues/21))
 * Detect when there is no fan installed ([#24](https://github.com/watou/vera-nest-thermostat/issues/24))
 
