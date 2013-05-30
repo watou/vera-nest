@@ -828,7 +828,7 @@ decompress_lzo_file() {
     <action>
       <serviceId>urn:upnp-org:serviceId:HouseStatus1</serviceId>
       <name>SetOccupancyState</name>
-      <run>
+      <job>
         local away
         if (lul_settings.NewOccupancyState == "Occupied") then
           away = false
@@ -843,7 +843,7 @@ decompress_lzo_file() {
         else
           task("Failed to send away command.")
         end
-      </run>
+      </job>
     </action>
     <action>
       <serviceId>urn:upnp-org:serviceId:HouseStatus1</serviceId>
@@ -862,7 +862,7 @@ decompress_lzo_file() {
     <action>
       <serviceId>urn:upnp-org:serviceId:SwitchPower1</serviceId>
       <name>SetTarget</name>
-      <run>
+      <job>
         local away
         if (lul_settings.newTargetValue == "1") then
           away = false
@@ -877,7 +877,7 @@ decompress_lzo_file() {
         else
           task("Failed to send away command.")
         end
-      </run>
+      </job>
     </action>
     <action>
       <serviceId>urn:upnp-org:serviceId:SwitchPower1</serviceId>
@@ -917,14 +917,14 @@ decompress_lzo_file() {
     <action>
       <serviceId>urn:upnp-org:serviceId:TemperatureSetpoint1_Heat</serviceId>
       <name>SetCurrentSetpoint</name>
-      <run>
+      <job>
         -- tell the Nest to set the new target temperature to delocalizeTemp(lul_settings.NewCurrentSetpoint)
         if (setTargetTemperature(TEMP_SETPOINT_HEAT_SID, lul_device, delocalizeTemp(lul_settings.NewCurrentSetpoint))) then
           getStatusSoon()
         else
           task("Failed to send heat setpoint command.")
         end
-      </run>
+      </job>
     </action>
     <action>
       <serviceId>urn:upnp-org:serviceId:TemperatureSetpoint1_Heat</serviceId>
@@ -943,14 +943,14 @@ decompress_lzo_file() {
     <action>
       <serviceId>urn:upnp-org:serviceId:TemperatureSetpoint1_Cool</serviceId>
       <name>SetCurrentSetpoint</name>
-      <run>
+      <job>
         -- tell the Nest to set the new target temperature to delocalizeTemp(lul_settings.NewCurrentSetpoint)
         if (setTargetTemperature(TEMP_SETPOINT_COOL_SID, lul_device, delocalizeTemp(lul_settings.NewCurrentSetpoint))) then
           getStatusSoon()
         else
           task("Failed to send cool setpoint command.")
         end
-      </run>
+      </job>
     </action>
     <action>
       <serviceId>urn:upnp-org:serviceId:TemperatureSetpoint1_Cool</serviceId>
@@ -962,7 +962,7 @@ decompress_lzo_file() {
     <action>
       <serviceId>urn:upnp-org:serviceId:HVAC_UserOperatingMode1</serviceId>
       <name>SetModeTarget</name>
-      <run>
+      <job>
         -- tell the Nest to switch to lul_settings.NewModeTarget
         local targetType = upnpToNest(HVAC_USER_SID, "ModeTarget", lul_settings.NewModeTarget)
         if (targetType and setTargetTemperatureType(getThermostatId(luup.devices[lul_device].id), targetType)) then
@@ -970,7 +970,7 @@ decompress_lzo_file() {
         else
           task("Failed to send set mode target command.")
         end
-      </run>
+      </job>
     </action>
     <action>
       <serviceId>urn:upnp-org:serviceId:HVAC_UserOperatingMode1</serviceId>
@@ -989,7 +989,7 @@ decompress_lzo_file() {
     <action>
       <serviceId>urn:upnp-org:serviceId:HVAC_FanOperatingMode1</serviceId>
       <name>SetMode</name>
-      <run>
+      <job>
         local mode
         if (lul_settings.NewMode == "ContinuousOn") then
           mode = "on"
@@ -1004,7 +1004,7 @@ decompress_lzo_file() {
         else
           task("Failed to send fan command.")
         end
-      </run>
+      </job>
     </action>
     <action>
       <serviceId>urn:upnp-org:serviceId:HVAC_FanOperatingMode1</serviceId>
