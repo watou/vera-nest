@@ -90,7 +90,7 @@ Please contact me through the [micasaverde.com forum][me].  All tips are gratefu
 
 ## History ##
 
-### 2013-0X-XX    v1.2
+### 2013-07-01    v1.2
 
 Fixed issues:
 
