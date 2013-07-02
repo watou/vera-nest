@@ -816,6 +816,66 @@
                     }
                 }
             ]
+        },
+        {
+            "id": 10,
+            "label": {
+                "lang_tag": "mode_state_changes",
+                "text": "Thermostat Running State Changes"
+            },
+            "serviceId": "urn:micasaverde-com:serviceId:HVAC_OperatingState1",
+            "argumentList": [
+                {
+                    "id": 1,
+                    "dataType": "string",
+                    "defaultValue": "",
+                    "allowedValueList": [
+                        {
+                            "Off": "Off",
+                            "HumanFriendlyText": {
+                                "lang_tag": "hft_hvac_off",
+                                "text": "_DEVICE_NAME_ is off"
+                            }
+                        },
+                        {
+                            "Heating": "Heating",
+                            "HumanFriendlyText": {
+                                "lang_tag": "hft_hvac_heating",
+                                "text": "_DEVICE_NAME_ is heating"
+                            }
+                        },
+                        {
+                            "Cooling": "Cooling",
+                            "HumanFriendlyText": {
+                                "lang_tag": "hft_hvac_cooling",
+                                "text": "_DEVICE_NAME_ is cooling"
+                            }
+                        },
+                        {
+                            "FanOnly": "FanOnly",
+                            "HumanFriendlyText": {
+                                "lang_tag": "hft_hvac_fan_only",
+                                "text": "_DEVICE_NAME_ is running the fan only"
+                            }
+                        },
+                        {
+                            "Idle": "Idle",
+                            "HumanFriendlyText": {
+                                "lang_tag": "hft_hvac_idle",
+                                "text": "_DEVICE_NAME_ is idle"
+                            }
+                        }
+
+                    ],
+                    "name": "ModeState",
+                    "comparisson": "=",
+                    "prefix": {
+                        "lang_tag": "mode_state",
+                        "text": "ModeState"
+                    },
+                    "suffix": {}
+                }
+            ]
         }
     ],
     "DeviceType": "urn:schemas-watou-com:device:HVAC_ZoneThermostat:1",
