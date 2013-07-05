@@ -90,6 +90,12 @@ Please contact me through the [micasaverde.com forum][me].  All tips are gratefu
 
 ## History ##
 
+### 2013-XX-XX    v1.3
+
+Fixed issues:
+
+* Added triggers for ModeState changes ([#25](https://github.com/watou/vera-nest-thermostat/issues/25))
+
 ### 2013-07-01    v1.2
 
 Fixed issues:
