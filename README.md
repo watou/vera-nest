@@ -30,6 +30,19 @@ Shortly after saving your changes, the plugin will login to `nest.com` and retri
     Master Bedroom	(humidistat functions)
     ...
 
+### Controlling the Precision of Reported Temperatures ###
+
+The Nest thermostat internally reports very precise temperatures in Celsius, but by default the plugin will report whole number values (regardless of whether Fahrenheit or Celsius temperature scales are used).  You can control this however, by specifying your preferred rounding precision with a device variable on the main Nest device called `TemperaturePrecision`.  The value you provide is the denominator D in the fraction 1/D, the fractional value to which the temperature should be rounded.  For example, providing 2 means that temperatures will be rounded to the nearest 1/2 (0.5) of a degree.  Providing 10 would round to the nearest tenth (0.10) of a degree.
+
+The default value for `TemperaturePrecision` is 1, meaning only whole degrees are reported by default.
+
+Notes
+
+1. This feature will not allow you to change the setpoint sliders in the user interface to fractional values; that is outside the scope of the plugin.
+2. Using this feature may cause unwanted side-effects that are outside the scope of the plugin's control.  Please test your configuration thoroughly before determining that a non-1 value is for you.
+3. This feature is agnostic to whether you display temperatures in Fahrenheit or Celsius, but it may be of more value to Celsius users to set `TemperaturePrecision` to 2 to achieve near-Fahrenheit granularity.
+
+
 ## Notes and Limitations ##
 
 * Only works with Vera UI5 1.5.408 or later.
@@ -90,11 +103,13 @@ Please contact me through the [micasaverde.com forum][me].  All tips are gratefu
 
 ## History ##
 
-### 2013-XX-XX    v1.3
+### 2013-10-09    v1.3
 
 Fixed issues:
 
 * Added triggers for ModeState changes ([#25](https://github.com/watou/vera-nest-thermostat/issues/25))
+* Cached ModeStatus on set so that immediate setpoint changes work ([#26](https://github.com/watou/vera-nest-thermostat/issues/26))
+* Added `TemperaturePrecision` device variable for (optionally) more precise current temperature values ([#27](https://github.com/watou/vera-nest-thermostat/issues/27))
 
 ### 2013-07-01    v1.2
 

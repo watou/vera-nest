@@ -107,7 +107,7 @@ decompress_lzo_file() {
 
     -- main functions
 
-    local PLUGIN_VERSION = "1.2"
+    local PLUGIN_VERSION = "1.3"
 
     local NEST_SID = "urn:watou-com:serviceId:Nest1"
     local NEST_STRUCTURE_SID = "urn:watou-com:serviceId:NestStructure1"
@@ -170,10 +170,12 @@ decompress_lzo_file() {
         (math.ceil(value * precision - 0.5) / precision)
     end
 
+    local TemperaturePrecision = 1
+
     -- convert thermostat format (C) to local format (C or F)
     local function localizeTemp(temperature)
-      return (veraTemperatureScale == "C") and round(temperature, 1) or
-             round(((temperature + 0.0) * 1.8) + 32, 1)
+      return (veraTemperatureScale == "C") and round(temperature, TemperaturePrecision) or
+             round(((temperature + 0.0) * 1.8) + 32, TemperaturePrecision)
     end
 
     -- convert local format (C or F) to thermostat format (C)
@@ -750,6 +752,12 @@ decompress_lzo_file() {
       end
       debug("Logging is set to " .. Logging)
 
+      TemperaturePrecision = tonumber(readVariableOrInit(PARENT_DEVICE, NEST_SID, "TemperatureScale", "1"))
+      TemperaturePrecision = TemperaturePrecision or 1
+      if TemperaturePrecision &lt; 1 or TemperaturePrecision &gt; 1000 then
+        TemperaturePrecision = 1
+      end
+
       getVeraTemperatureScale()
 
       https = require("ssl.https")
@@ -966,6 +974,16 @@ decompress_lzo_file() {
         -- tell the Nest to switch to lul_settings.NewModeTarget
         local targetType = upnpToNest(HVAC_USER_SID, "ModeTarget", lul_settings.NewModeTarget)
         if (targetType and setTargetTemperatureType(getThermostatId(luup.devices[lul_device].id), targetType)) then
+          -- SPECIAL CASE
+          -- immediately record this state change in the local device variable, instead of
+          -- waiting for the status update, because setting heat and cool setpoints depends
+          -- on the device variable, which will likely be stale for several seconds.
+          -- Normally, we would never set our own device variable unless we were getting
+          -- a status dump back from nest.com, the sole authority.
+          -- SPECIAL CASE
+          writeVariableIfChanged(lul_device, HVAC_USER_SID, "ModeTarget", lul_settings.NewModeTarget)
+
+          -- regardless, queue up a status poll
           getStatusSoon()
         else
           task("Failed to send set mode target command.")
