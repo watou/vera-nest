@@ -103,6 +103,13 @@ Please contact me through the [micasaverde.com forum][me].  All tips are gratefu
 
 ## History ##
 
+### 2014-01-16    v1.4
+
+Fixed issues:
+
+* Disable Heat or Cool buttons when not can_heat or can_cool ([#28](https://github.com/watou/vera-nest-thermostat/issues/28))
+* Move the "Home/Away" device from DEVICE_CATEGORY_SWITCH (3) to DEVICE_CATEGORY_HVAC (5) ([#29](https://github.com/watou/vera-nest-thermostat/issues/29))
+
 ### 2013-10-09    v1.3
 
 Fixed issues:

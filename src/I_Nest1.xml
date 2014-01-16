@@ -255,7 +255,13 @@ decompress_lzo_file() {
       },
       [HA_DEVICE_SID] = {
         ["Commands"] = function(shared, device)
-          local commands = "hvac_off,hvac_auto,hvac_cool,hvac_heat,heating_setpoint,cooling_setpoint,hvac_state"
+          local commands = "hvac_off,hvac_auto,hvac_state,heating_setpoint,cooling_setpoint"
+          if shared.can_heat then
+          	commands = commands .. ",hvac_heat"
+          end
+          if shared.can_cool then
+          	commands = commands .. ",hvac_cool"
+          end
           if device.has_fan then
             commands = commands .. ",fan_label,fan_auto,fan_on"
           end
@@ -498,9 +504,9 @@ decompress_lzo_file() {
             if (child == nil) then
               log("failed to find device for structure " .. altid)
             else
-              -- make sure this device has category_num=3
-              if (luup.attr_get("category_num", child) ~= "3") then
-                luup.attr_set("category_num", "3", child)
+              -- make sure this device has category_num=5
+              if (luup.attr_get("category_num", child) ~= "5") then
+                luup.attr_set("category_num", "5", child)
               end
               writeVariableFromNestIfChanged(child, HOUSE_STATUS_SID, "OccupancyState", v)
               writeVariableFromNestIfChanged(child, SWITCH_POWER_SID, "Status", v)
