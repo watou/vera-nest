@@ -107,7 +107,7 @@ decompress_lzo_file() {
 
     -- main functions
 
-    local PLUGIN_VERSION = "1.4"
+    local PLUGIN_VERSION = "1.5"
 
     local NEST_SID = "urn:watou-com:serviceId:Nest1"
     local NEST_STRUCTURE_SID = "urn:watou-com:serviceId:NestStructure1"
@@ -381,7 +381,7 @@ decompress_lzo_file() {
                        ["content-length"] = string.len(body),
                        ["content-type"] = "application/x-www-form-urlencoded"}
       local url = { url = "https://home.nest.com/user/login",
-                    protocol = "sslv3",
+                    protocol = "tlsv1",
                     method = "POST",
                     source = ltn12.source.string(body),
                     sink = ltn12.sink.table(res),
@@ -421,7 +421,7 @@ decompress_lzo_file() {
                          ["X-nl-user-id"] = session.userid,
                          ["X-nl-protocol-version"] = "1"}
         local url = { url = session.transport_url .. "/v2/mobile/user." .. session.userid,
-                      protocol = "sslv3",
+                      protocol = "tlsv1",
                       method = "GET",
                       sink = ltn12.sink.table(res),
                       headers = headers }
@@ -574,7 +574,7 @@ decompress_lzo_file() {
 		                     ["content-length"] = string.len(data),
 		                     ["content-type"] = "application/json"}
         local url = { url = session.transport_url .. "/v2/put/structure." .. structure_id,
-		                  protocol = "sslv3",
+		                  protocol = "tlsv1",
 		                  method = "POST",
 		                  source = ltn12.source.string(data),
 		                  sink = ltn12.sink.table(res),
@@ -618,7 +618,7 @@ decompress_lzo_file() {
                          ["content-length"] = string.len(data),
                          ["content-type"] = "application/json"}
         local url = { url = session.transport_url .. "/v2/put/shared." .. thermostat_id,
-                      protocol = "sslv3",
+                      protocol = "tlsv1",
                       method = "POST",
                       source = ltn12.source.string(data),
                       sink = ltn12.sink.table(res),
@@ -662,7 +662,7 @@ decompress_lzo_file() {
                          ["content-length"] = string.len(data),
                          ["content-type"] = "application/json"}
         local url = { url = session.transport_url .. "/v2/put/shared." .. thermostat_id,
-                      protocol = "sslv3",
+                      protocol = "tlsv1",
                       method = "POST",
                       source = ltn12.source.string(data),
                       sink = ltn12.sink.table(res),
@@ -700,7 +700,7 @@ decompress_lzo_file() {
 		                     ["content-length"] = string.len(data),
 		                     ["content-type"] = "application/json"}
         local url = { url = session.transport_url .. "/v2/put/device." .. thermostat_id,
-                      protocol = "sslv3",
+                      protocol = "tlsv1",
                       method = "POST",
                       source = ltn12.source.string(data),
                       sink = ltn12.sink.table(res),
