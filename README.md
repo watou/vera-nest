@@ -105,6 +105,12 @@ Please contact me through the [micasaverde.com forum][me].  All tips are gratefu
 
 ## History ##
 
+### 2014-04-15    v1.5
+
+Fixed issue:
+
+* Replaced use of sslv3 with tlsv1 to fix a new connectivity issue reported by some users ([#30](https://github.com/watou/vera-nest-thermostat/issues/30))
+
 ### 2014-01-16    v1.4
 
 Fixed issues:
