@@ -105,7 +105,13 @@ Please contact me through the [micasaverde.com forum][me].  All tips are gratefu
 
 ## History ##
 
-### 2014-04-15    v1.5
+### 2014-03-22    v1.6
+
+Fixed issue:
+
+* Now, on attempting to get status, nest.com's transport servers can return HTTP 200 (OK) but not the JSON payload we're expecting (likely when the token has expired), and this was causing the code to expect data that wasn't there, killing future polling cycles.  This fix adds better error checking. ([#31](https://github.com/watou/vera-nest-thermostat/issues/31))
+
+### 2014-03-15    v1.5
 
 Fixed issue:
 
