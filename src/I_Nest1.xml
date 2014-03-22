@@ -107,7 +107,7 @@ decompress_lzo_file() {
 
     -- main functions
 
-    local PLUGIN_VERSION = "1.5"
+    local PLUGIN_VERSION = "1.6"
 
     local NEST_SID = "urn:watou-com:serviceId:Nest1"
     local NEST_STRUCTURE_SID = "urn:watou-com:serviceId:NestStructure1"
@@ -430,7 +430,7 @@ decompress_lzo_file() {
 
         res = json.decode(table.concat(res))
 
-        if (code ~= 200) then
+        if (code ~= 200) or not res or not res.structure or not res.shared or not res.device or not res.track then
           log("error getting status from nest.com with HTTP code=" .. tostring(code) .. ", status=" .. tostring(status))
           -- assume there is something wrong with the session
           clearSession()
