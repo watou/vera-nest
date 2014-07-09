@@ -107,7 +107,7 @@ decompress_lzo_file() {
 
     -- main functions
 
-    local PLUGIN_VERSION = "1.6"
+    local PLUGIN_VERSION = "1.7"
 
     local NEST_SID = "urn:watou-com:serviceId:Nest1"
     local NEST_STRUCTURE_SID = "urn:watou-com:serviceId:NestStructure1"
@@ -122,16 +122,21 @@ decompress_lzo_file() {
     local HA_DEVICE_SID = "urn:micasaverde-com:serviceId:HaDevice1"
     local SWITCH_POWER_SID = "urn:upnp-org:serviceId:SwitchPower1"
     local MCV_ENERGY_METERING_SID = "urn:micasaverde-com:serviceId:EnergyMetering1"
+    local SECURITY_SENSOR_SID = "urn:micasaverde-com:serviceId:SecuritySensor1"
     local DEFAULT_POLL = 120
     local MIN_POLL = 60
     local SOON = "5" -- seconds
     local NEST_UA = "Nest/1.1.0.10 CFNetwork/548.0.4"
     local NEST_BATTERY_LOW = 3.6
     local NEST_BATTERY_HIGH = 3.9
+    local PROTECT_BATTERY_LOW = 4200  -- guess, TBD
+    local PROTECT_BATTERY_HIGH = 5400  -- 1.8v full voltage of 3 lithium AA batteries
 
     local STRUCTURE_ID_PREFIX  = "loc."
     local THERMOSTAT_ID_PREFIX = "therm."
     local HUMIDISTAT_ID_PREFIX = "humid."
+    local SMOKE_ID_PREFIX      = "smoke."
+    local CO_ID_PREFIX         = "co."
 
     local PARENT_DEVICE, https, urlcode
 
@@ -267,26 +272,49 @@ decompress_lzo_file() {
           end
           return commands
         end,
-        ["BatteryLevel"] = function(shared, device)
-          local volts = tonumber(device.battery_level)
-          if (volts == nil) then return "0"
+        ["BatteryLevel"] = function(shared, device, topaz)
+          if topaz then
+            local millivolts = tonumber(topaz.battery_level)
+            if (millivolts == nil) then return "0"
+            else
+              millivolts = (millivolts &lt; PROTECT_BATTERY_LOW) and PROTECT_BATTERY_LOW or millivolts
+              millivolts = (millivolts &gt; PROTECT_BATTERY_HIGH) and PROTECT_BATTERY_HIGH or millivolts
+              local percent = ((millivolts - PROTECT_BATTERY_LOW) * 100.0) / (PROTECT_BATTERY_HIGH - PROTECT_BATTERY_LOW)
+              return tostring(math.floor(percent))
+            end
           else
-            volts = (volts &lt; NEST_BATTERY_LOW) and NEST_BATTERY_LOW or volts
-            volts = (volts &gt; NEST_BATTERY_HIGH) and NEST_BATTERY_HIGH or volts
-            local percent = ((volts - NEST_BATTERY_LOW) * 100.0) / (NEST_BATTERY_HIGH - NEST_BATTERY_LOW)
-            return tostring(math.floor(percent))
+            local volts = tonumber(device.battery_level)
+            if (volts == nil) then return "0"
+            else
+              volts = (volts &lt; NEST_BATTERY_LOW) and NEST_BATTERY_LOW or volts
+              volts = (volts &gt; NEST_BATTERY_HIGH) and NEST_BATTERY_HIGH or volts
+              local percent = ((volts - NEST_BATTERY_LOW) * 100.0) / (NEST_BATTERY_HIGH - NEST_BATTERY_LOW)
+              return tostring(math.floor(percent))
+            end
           end
         end,
-       ["BatteryDate"] = function(track)
-          return tostring(math.floor(track.last_connection / 1000))
+       ["BatteryDate"] = function(track, topaz)
+          return tostring(math.floor((topaz and topaz["$timestamp"] or track.last_connection) / 1000))
         end,
-       ["LastUpdate"] = function(track, structure)
-         if     (type(track) == "table") then     return tostring(math.floor(track.last_connection / 1000))
-         elseif (type(structure) == "table") then return tostring(math.floor(structure["$timestamp"] / 1000)) end
+       ["LastUpdate"] = function(track, structure, topaz)
+         if     (type(track) == "table")     then return tostring(math.floor(track.last_connection / 1000))
+         elseif (type(structure) == "table") then return tostring(math.floor(structure["$timestamp"] / 1000))
+         elseif (type(topaz) == "table")     then return tostring(math.floor(topaz["$timestamp"] / 1000))
+         end
         end
       },
       [MCV_ENERGY_METERING_SID] = {
         ["UserSuppliedWattage"] = function(shared, device) return "0,0,0" end
+      },
+      [SECURITY_SENSOR_SID] = {
+        ["Tripped"] = function(topaz, sensorType)
+          if     sensorType == SMOKE_ID_PREFIX then return topaz.smoke_status == 0 and "0" or "1"
+          elseif sensorType == CO_ID_PREFIX    then return topaz.co_status    == 0 and "0" or "1"
+          end
+        end,
+        -- don't do "Armed" because it has a default value in the service XML file
+        ["LastTrip"] = function(topaz, sensorType) return "0" 
+        end -- only used for device creation
       }
     }
 
@@ -491,13 +519,31 @@ decompress_lzo_file() {
                  , false, false)
           end
 
+          -- add any smoke and CO detectors
+          if res.topaz then
+            for k,v in pairs(res.topaz) do
+              local altid = SMOKE_ID_PREFIX .. k
+              if (findChild(PARENT_DEVICE, altid) == nil) then
+                added = added + 1
+              end
+              luup.chdev.append(PARENT_DEVICE, ptr, altid, v.description, "urn:schemas-micasaverde-com:device:SmokeSensor:1",
+                  "D_SmokeSensor1.xml", "",
+                          nestToUpnpParam(SECURITY_SENSOR_SID, "Tripped",  v, SMOKE_ID_PREFIX) ..
+                  "\n" .. nestToUpnpParam(SECURITY_SENSOR_SID, "LastTrip", v, SMOKE_ID_PREFIX) ..
+                  "\n" .. nestToUpnpParam(HA_DEVICE_SID, "BatteryLevel", nil, nil, v) ..
+                  "\n" .. nestToUpnpParam(HA_DEVICE_SID, "BatteryDate", nil, v) ..
+                  "\n" .. nestToUpnpParam(HA_DEVICE_SID, "LastUpdate", nil, nil, v)
+                  , false, false)
+            end
+          end
+
           luup.chdev.sync(PARENT_DEVICE, ptr)
           if (added > 0) then
             debug("Added " .. added .. " children device(s); awaiting restart...")
             return
           end
 
-          -- update all structure, thermostat and humidistat children devices
+          -- update all structure, thermostat, humidistat, smoke and CO children devices
           for k,v in pairs(res.structure) do
             local altid = STRUCTURE_ID_PREFIX .. k
             local child = findChild(PARENT_DEVICE, altid)
@@ -552,6 +598,35 @@ decompress_lzo_file() {
               end
               writeVariableFromNestIfChanged(child, HUMIDITY_SENSOR_SID, "CurrentLevel", v, res.device[k])
               writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "LastUpdate", res.track[k])
+            end
+          end
+          if res.topaz then
+            for k,v in pairs(res.topaz) do
+              local altid = SMOKE_ID_PREFIX .. k
+              local child = findChild(PARENT_DEVICE, altid)
+              if (child == nil) then
+                log("failed to find device for smoke detector " .. altid)
+              else
+                -- make sure this device has category_num=4 (Security Sensor)
+                if (luup.attr_get("category_num", child) ~= "4") then
+                  luup.attr_set("category_num", "4", child)
+                end
+                -- make sure this device has subcategory_num=4 (Smoke Sensor)
+                if (luup.attr_get("subcategory_num", child) ~= "4") then
+                  luup.attr_set("subcategory_num", "4", child)
+                end
+
+                -- set LastTrip to now if Tripped is transitioning from "0" to "1"
+                local newTripped = nestToUpnp(SECURITY_SENSOR_SID, "Tripped", v, SMOKE_ID_PREFIX)
+                if newTripped == "1" and luup.variable_get(SECURITY_SENSOR_SID, "Tripped", child) ~= "1" then
+                  writeVariableIfChanged(child, SECURITY_SENSOR_SID, "LastTrip", tostring(os.time()))
+                end
+                writeVariableIfChanged(child, SECURITY_SENSOR_SID, "Tripped", newTripped)
+
+                writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "BatteryLevel", nil, nil, v)
+                writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "BatteryDate", nil, v)
+                writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "LastUpdate", nil, nil, v)
+              end
             end
           end
         end
@@ -1044,6 +1119,14 @@ decompress_lzo_file() {
         return luup.variable_get(HVAC_FAN_SID, "FanStatus", lul_device) or "Off"
       </run>
     </action>
+    <action>
+      <serviceId>urn:micasaverde-com:serviceId:SecuritySensor1</serviceId>
+      <name>SetArmed</name>
+      <run>
+        luup.variable_set(SECURITY_SENSOR_SID, "Armed", lul_settings.newArmedValue, lul_device)
+      </run>
+    </action>
+
   </actionList>
 </implementation>
 
