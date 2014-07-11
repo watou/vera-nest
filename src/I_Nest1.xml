@@ -486,7 +486,7 @@ decompress_lzo_file() {
 
         res = json.decode(table.concat(res))
 
-        if (code ~= 200) or not res or not res.structure or not res.shared or not res.device or not res.track then
+        if (code ~= 200) or type(res) ~= "table" or not (res.shared or res.topaz) then
           log("error getting status from nest.com with HTTP code=" .. tostring(code) .. ", status=" .. tostring(status))
           -- assume there is something wrong with the session
           clearSession()
@@ -495,76 +495,83 @@ decompress_lzo_file() {
 
           local whereMap = makeWhereMap(res)
 
-          -- create any missing structure, thermostat and humidistat children devices, remove any wrong ones
+          -- create any missing structure, thermostat, humidistat, smoke and CO children devices, remove any wrong ones
           local added = 0
           local ptr = luup.chdev.start(PARENT_DEVICE)
-          for k,v in pairs(res.structure) do
-            local altid = STRUCTURE_ID_PREFIX .. k
-            if (findChild(PARENT_DEVICE, altid) == nil) then
-              added = added + 1
+
+          if res.structure then
+            for id,structure in pairs(res.structure) do
+              local altid = STRUCTURE_ID_PREFIX .. id
+              if (findChild(PARENT_DEVICE, altid) == nil) then
+                added = added + 1
+              end
+              luup.chdev.append(PARENT_DEVICE, ptr, altid, structure.name, "urn:schemas-watou-com:device:NestStructure:1",
+                   "D_NestStructure1.xml", "",
+                           nestToUpnpParam(HOUSE_STATUS_SID, "OccupancyState", structure) ..
+                   "\n" .. nestToUpnpParam(NEST_STRUCTURE_SID, "StreetAddress", structure) ..
+                   "\n" .. nestToUpnpParam(NEST_STRUCTURE_SID, "Location", structure) ..
+                   "\n" .. nestToUpnpParam(NEST_STRUCTURE_SID, "PostalCode", structure) ..
+                   "\n" .. nestToUpnpParam(NEST_STRUCTURE_SID, "CountryCode", structure) ..
+                   "\n" .. nestToUpnpParam(HA_DEVICE_SID, "LastUpdate", nil, structure) ..
+                   "\n" .. nestToUpnpParam(SWITCH_POWER_SID, "Status", structure)
+                  , false, false)
             end
-            luup.chdev.append(PARENT_DEVICE, ptr, altid, v.name, "urn:schemas-watou-com:device:NestStructure:1",
-                 "D_NestStructure1.xml", "",
-                         nestToUpnpParam(HOUSE_STATUS_SID, "OccupancyState", v) ..
-                 "\n" .. nestToUpnpParam(NEST_STRUCTURE_SID, "StreetAddress", v) ..
-                 "\n" .. nestToUpnpParam(NEST_STRUCTURE_SID, "Location", v) ..
-                 "\n" .. nestToUpnpParam(NEST_STRUCTURE_SID, "PostalCode", v) ..
-                 "\n" .. nestToUpnpParam(NEST_STRUCTURE_SID, "CountryCode", v) ..
-                 "\n" .. nestToUpnpParam(HA_DEVICE_SID, "LastUpdate", nil, v) ..
-                 "\n" .. nestToUpnpParam(SWITCH_POWER_SID, "Status", v)
-                 , false, false)
           end
-          for k,v in pairs(res.shared) do
-            local altid = THERMOSTAT_ID_PREFIX .. k
-            if (findChild(PARENT_DEVICE, altid) == nil) then
-              added = added + 1
+
+          if res.shared then
+            for id,shared in pairs(res.shared) do
+              local altid = THERMOSTAT_ID_PREFIX .. id
+              if (findChild(PARENT_DEVICE, altid) == nil) then
+                added = added + 1
+              end
+              local device = res.device[id]
+              local track  = res.track[id]
+              luup.chdev.append(PARENT_DEVICE, ptr, altid, getThermostatName(shared, device, whereMap), "urn:schemas-watou-com:device:HVAC_ZoneThermostat:1",
+                   "D_NestThermostat1.xml", "",
+                           nestToUpnpParam(TEMP_SENSOR_SID, "CurrentTemperature", shared, device) ..
+                   "\n" .. nestToUpnpParam(TEMP_SETPOINT_HEAT_SID, "CurrentSetpoint", shared, device) ..
+                   "\n" .. nestToUpnpParam(TEMP_SETPOINT_COOL_SID, "CurrentSetpoint", shared, device) ..
+                   "\n" .. nestToUpnpParam(HVAC_FAN_SID, "Mode", shared, device) ..
+                   "\n" .. nestToUpnpParam(HVAC_FAN_SID, "FanStatus", shared, device) ..
+                   "\n" .. nestToUpnpParam(HVAC_USER_SID, "ModeStatus", shared, device) ..
+                   "\n" .. nestToUpnpParam(HVAC_STATE_SID, "ModeState", shared, device) ..
+                   "\n" .. nestToUpnpParam(HA_DEVICE_SID, "Commands", shared, device) ..
+                   "\n" .. nestToUpnpParam(HA_DEVICE_SID, "BatteryLevel", shared, device) ..
+                   "\n" .. nestToUpnpParam(HA_DEVICE_SID, "BatteryDate", track) ..
+                   "\n" .. nestToUpnpParam(HA_DEVICE_SID, "LastUpdate", track) ..
+                   "\n" .. nestToUpnpParam(MCV_ENERGY_METERING_SID, "UserSuppliedWattage", shared, device)
+                   , false, false)
             end
-            local dev = res.device[k]
-            local track = res.track[k]
-            luup.chdev.append(PARENT_DEVICE, ptr, altid, getThermostatName(v, dev, whereMap), "urn:schemas-watou-com:device:HVAC_ZoneThermostat:1",
-                 "D_NestThermostat1.xml", "",
-                         nestToUpnpParam(TEMP_SENSOR_SID, "CurrentTemperature", v, dev) ..
-                 "\n" .. nestToUpnpParam(TEMP_SETPOINT_HEAT_SID, "CurrentSetpoint", v, dev ) ..
-                 "\n" .. nestToUpnpParam(TEMP_SETPOINT_COOL_SID, "CurrentSetpoint", v, dev ) ..
-                 "\n" .. nestToUpnpParam(HVAC_FAN_SID, "Mode", v, dev) ..
-                 "\n" .. nestToUpnpParam(HVAC_FAN_SID, "FanStatus", v, dev) ..
-                 "\n" .. nestToUpnpParam(HVAC_USER_SID, "ModeStatus", v, dev) ..
-                 "\n" .. nestToUpnpParam(HVAC_STATE_SID, "ModeState", v, dev) ..
-                 "\n" .. nestToUpnpParam(HA_DEVICE_SID, "Commands", v, dev) ..
-                 "\n" .. nestToUpnpParam(HA_DEVICE_SID, "BatteryLevel", v, dev) ..
-                 "\n" .. nestToUpnpParam(HA_DEVICE_SID, "BatteryDate", track) ..
-                 "\n" .. nestToUpnpParam(HA_DEVICE_SID, "LastUpdate", track) ..
-                 "\n" .. nestToUpnpParam(MCV_ENERGY_METERING_SID, "UserSuppliedWattage", v, dev)
-                 , false, false)
-          end
-          for k,v in pairs(res.shared) do
-            local altid = HUMIDISTAT_ID_PREFIX .. k
-            if (findChild(PARENT_DEVICE, altid) == nil) then
-              added = added + 1
+
+            for id,shared in pairs(res.shared) do
+              local altid = HUMIDISTAT_ID_PREFIX .. id
+              if (findChild(PARENT_DEVICE, altid) == nil) then
+                added = added + 1
+              end
+              local device = res.device[id]
+              local track  = res.track[id]
+              luup.chdev.append(PARENT_DEVICE, ptr, altid, getThermostatName(shared, device, whereMap), "urn:schemas-watou-com:device:NestHumidistat:1",
+                   "D_NestHumidistat1.xml", "",
+                           nestToUpnpParam(HUMIDITY_SENSOR_SID, "CurrentLevel", shared, device) ..
+                  "\n" .. nestToUpnpParam(HA_DEVICE_SID, "LastUpdate", track)
+                   , false, false)
             end
-            local dev = res.device[k]
-            local track = res.track[k]
-            luup.chdev.append(PARENT_DEVICE, ptr, altid, getThermostatName(v, dev, whereMap), "urn:schemas-watou-com:device:NestHumidistat:1",
-                 "D_NestHumidistat1.xml", "",
-                         nestToUpnpParam(HUMIDITY_SENSOR_SID, "CurrentLevel", v, dev) ..
-                 "\n" .. nestToUpnpParam(HA_DEVICE_SID, "LastUpdate", track)
-                 , false, false)
           end
 
           -- add any smoke and CO detectors
           if res.topaz then
-            for k,v in pairs(res.topaz) do
-              local altid = SMOKE_ID_PREFIX .. k
+            for id,topaz in pairs(res.topaz) do
+              local altid = SMOKE_ID_PREFIX .. id
               if (findChild(PARENT_DEVICE, altid) == nil) then
                 added = added + 1
               end
-              luup.chdev.append(PARENT_DEVICE, ptr, altid, getProtectName(v, whereMap), "urn:schemas-micasaverde-com:device:SmokeSensor:1",
+              luup.chdev.append(PARENT_DEVICE, ptr, altid, getProtectName(topaz, whereMap), "urn:schemas-micasaverde-com:device:SmokeSensor:1",
                   "D_SmokeSensor1.xml", "",
-                          nestToUpnpParam(SECURITY_SENSOR_SID, "Tripped",  v, SMOKE_ID_PREFIX) ..
-                  "\n" .. nestToUpnpParam(SECURITY_SENSOR_SID, "LastTrip", v, SMOKE_ID_PREFIX) ..
-                  "\n" .. nestToUpnpParam(HA_DEVICE_SID, "BatteryLevel", nil, nil, v) ..
-                  "\n" .. nestToUpnpParam(HA_DEVICE_SID, "BatteryDate", nil, v) ..
-                  "\n" .. nestToUpnpParam(HA_DEVICE_SID, "LastUpdate", nil, nil, v)
+                          nestToUpnpParam(SECURITY_SENSOR_SID, "Tripped",  topaz, SMOKE_ID_PREFIX) ..
+                  "\n" .. nestToUpnpParam(SECURITY_SENSOR_SID, "LastTrip", topaz, SMOKE_ID_PREFIX) ..
+                  "\n" .. nestToUpnpParam(HA_DEVICE_SID, "BatteryLevel", nil, nil, topaz) ..
+                  "\n" .. nestToUpnpParam(HA_DEVICE_SID, "BatteryDate", nil, topaz) ..
+                  "\n" .. nestToUpnpParam(HA_DEVICE_SID, "LastUpdate", nil, nil, topaz)
                   , false, false)
             end
           end
@@ -576,65 +583,74 @@ decompress_lzo_file() {
           end
 
           -- update all structure, thermostat, humidistat, smoke and CO children devices
-          for k,v in pairs(res.structure) do
-            local altid = STRUCTURE_ID_PREFIX .. k
-            local child = findChild(PARENT_DEVICE, altid)
-            if (child == nil) then
-              log("failed to find device for structure " .. altid)
-            else
-              -- make sure this device has category_num=5
-              if (luup.attr_get("category_num", child) ~= "5") then
-                luup.attr_set("category_num", "5", child)
+
+          if res.structure then
+            for id,structure in pairs(res.structure) do
+              local altid = STRUCTURE_ID_PREFIX .. id
+              local child = findChild(PARENT_DEVICE, altid)
+              if (child == nil) then
+                log("failed to find device for structure " .. altid)
+              else
+                -- make sure this device has category_num=5
+                if (luup.attr_get("category_num", child) ~= "5") then
+                  luup.attr_set("category_num", "5", child)
+                end
+                writeVariableFromNestIfChanged(child, HOUSE_STATUS_SID, "OccupancyState", structure)
+                writeVariableFromNestIfChanged(child, SWITCH_POWER_SID, "Status", structure)
+                writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "LastUpdate", nil, structure)
               end
-              writeVariableFromNestIfChanged(child, HOUSE_STATUS_SID, "OccupancyState", v)
-              writeVariableFromNestIfChanged(child, SWITCH_POWER_SID, "Status", v)
-              writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "LastUpdate", nil, v)
             end
           end
 
-          for k,v in pairs(res.shared) do
-            local altid = THERMOSTAT_ID_PREFIX .. k
-            local child = findChild(PARENT_DEVICE, altid)
-            if (child == nil) then
-              log("failed to find device for thermostat " .. altid)
-            else
-              -- make sure this device has category_num=5
-              if (luup.attr_get("category_num", child) ~= "5") then
-                luup.attr_set("category_num", "5", child)
-              end
+          if res.shared then
+            for id,shared in pairs(res.shared) do
+              local altid = THERMOSTAT_ID_PREFIX .. id
+              local child = findChild(PARENT_DEVICE, altid)
+              if (child == nil) then
+                log("failed to find device for thermostat " .. altid)
+              else
+                -- make sure this device has category_num=5
+                if (luup.attr_get("category_num", child) ~= "5") then
+                  luup.attr_set("category_num", "5", child)
+                end
 
-              local dev = res.device[k]
-              local track = res.track[k]
-              writeVariableFromNestIfChanged(child, TEMP_SENSOR_SID, "CurrentTemperature", v, dev)
-              writeVariableFromNestIfChanged(child, TEMP_SETPOINT_HEAT_SID, "CurrentSetpoint", v, dev)
-              writeVariableFromNestIfChanged(child, TEMP_SETPOINT_COOL_SID, "CurrentSetpoint", v, dev)
-              writeVariableFromNestIfChanged(child, HVAC_FAN_SID, "Mode", v, dev)
-              writeVariableFromNestIfChanged(child, HVAC_FAN_SID, "FanStatus", v, dev)
-              writeVariableFromNestIfChanged(child, HVAC_USER_SID, "ModeStatus", v, dev)
-              writeVariableFromNestIfChanged(child, HVAC_STATE_SID, "ModeState", v, dev)
-              writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "Commands", v, dev)
-              writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "BatteryLevel", v, dev)
-              writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "BatteryDate", track)
-              writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "LastUpdate", track)
-            end
-          end
-          for k,v in pairs(res.shared) do
-            local altid = HUMIDISTAT_ID_PREFIX .. k
-            local child = findChild(PARENT_DEVICE, altid)
-            if (child == nil) then
-              log("failed to find device for humidistat " .. altid)
-            else
-              -- make sure this device has category_num=16
-              if (luup.attr_get("category_num", child) ~= "16") then
-                luup.attr_set("category_num", "16", child)
+                local device = res.device[id]
+                local track  = res.track[id]
+                writeVariableFromNestIfChanged(child, TEMP_SENSOR_SID, "CurrentTemperature", shared, device)
+                writeVariableFromNestIfChanged(child, TEMP_SETPOINT_HEAT_SID, "CurrentSetpoint", shared, device)
+                writeVariableFromNestIfChanged(child, TEMP_SETPOINT_COOL_SID, "CurrentSetpoint", shared, device)
+                writeVariableFromNestIfChanged(child, HVAC_FAN_SID, "Mode", shared, device)
+                writeVariableFromNestIfChanged(child, HVAC_FAN_SID, "FanStatus", shared, device)
+                writeVariableFromNestIfChanged(child, HVAC_USER_SID, "ModeStatus", shared, device)
+                writeVariableFromNestIfChanged(child, HVAC_STATE_SID, "ModeState", shared, device)
+                writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "Commands", shared, device)
+                writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "BatteryLevel", shared, device)
+                writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "BatteryDate", track)
+                writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "LastUpdate", track)
               end
-              writeVariableFromNestIfChanged(child, HUMIDITY_SENSOR_SID, "CurrentLevel", v, res.device[k])
-              writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "LastUpdate", res.track[k])
+            end
+
+            for id,shared in pairs(res.shared) do
+              local altid = HUMIDISTAT_ID_PREFIX .. id
+              local child = findChild(PARENT_DEVICE, altid)
+              if (child == nil) then
+                log("failed to find device for humidistat " .. altid)
+              else
+                -- make sure this device has category_num=16
+                if (luup.attr_get("category_num", child) ~= "16") then
+                  luup.attr_set("category_num", "16", child)
+                end
+                local device = res.device[id]
+                local track  = res.track[id]
+                writeVariableFromNestIfChanged(child, HUMIDITY_SENSOR_SID, "CurrentLevel", shared, device)
+                writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "LastUpdate", track)
+              end
             end
           end
+
           if res.topaz then
-            for k,v in pairs(res.topaz) do
-              local altid = SMOKE_ID_PREFIX .. k
+            for id,topaz in pairs(res.topaz) do
+              local altid = SMOKE_ID_PREFIX .. id
               local child = findChild(PARENT_DEVICE, altid)
               if (child == nil) then
                 log("failed to find device for smoke detector " .. altid)
@@ -649,18 +665,19 @@ decompress_lzo_file() {
                 end
 
                 -- set LastTrip to now if Tripped is transitioning from "0" to "1"
-                local newTripped = nestToUpnp(SECURITY_SENSOR_SID, "Tripped", v, SMOKE_ID_PREFIX)
+                local newTripped = nestToUpnp(SECURITY_SENSOR_SID, "Tripped", topaz, SMOKE_ID_PREFIX)
                 if newTripped == "1" and luup.variable_get(SECURITY_SENSOR_SID, "Tripped", child) ~= "1" then
                   writeVariableIfChanged(child, SECURITY_SENSOR_SID, "LastTrip", tostring(os.time()))
                 end
                 writeVariableIfChanged(child, SECURITY_SENSOR_SID, "Tripped", newTripped)
 
-                writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "BatteryLevel", nil, nil, v)
-                writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "BatteryDate", nil, v)
-                writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "LastUpdate", nil, nil, v)
+                writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "BatteryLevel", nil, nil, topaz)
+                writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "BatteryDate", nil, topaz)
+                writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "LastUpdate", nil, nil, topaz)
               end
             end
           end
+
         end
       end
     end
