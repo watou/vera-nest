@@ -1,4 +1,4 @@
-<!--	Vera Plugin for Nest Thermostats	-->
+<!--	Vera Plugin for Nest Thermostats and Smoke and Carbon Monoxide Detectors	-->
 
 ![Devices in Vera](http://cocu.la/vera/nest/shot7.jpg)
 
