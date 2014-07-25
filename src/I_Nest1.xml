@@ -573,6 +573,19 @@ decompress_lzo_file() {
                   "\n" .. nestToUpnpParam(HA_DEVICE_SID, "BatteryDate", nil, topaz) ..
                   "\n" .. nestToUpnpParam(HA_DEVICE_SID, "LastUpdate", nil, nil, topaz)
                   , false, false)
+
+              altid = CO_ID_PREFIX .. id
+              if (findChild(PARENT_DEVICE, altid) == nil) then
+                added = added + 1
+              end
+              luup.chdev.append(PARENT_DEVICE, ptr, altid, getProtectName(topaz, whereMap), "urn:schemas-watou-com:device:NestCOSensor:1",
+                  "D_NestCOSensor1.xml", "",
+                          nestToUpnpParam(SECURITY_SENSOR_SID, "Tripped",  topaz, CO_ID_PREFIX) ..
+                  "\n" .. nestToUpnpParam(SECURITY_SENSOR_SID, "LastTrip", topaz, CO_ID_PREFIX) ..
+                  "\n" .. nestToUpnpParam(HA_DEVICE_SID, "BatteryLevel", nil, nil, topaz) ..
+                  "\n" .. nestToUpnpParam(HA_DEVICE_SID, "BatteryDate", nil, topaz) ..
+                  "\n" .. nestToUpnpParam(HA_DEVICE_SID, "LastUpdate", nil, nil, topaz)
+                  , false, false)
             end
           end
 
@@ -675,6 +688,33 @@ decompress_lzo_file() {
                 writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "BatteryDate", nil, topaz)
                 writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "LastUpdate", nil, nil, topaz)
               end
+
+              altid = CO_ID_PREFIX .. id
+              local child = findChild(PARENT_DEVICE, altid)
+              if (child == nil) then
+                log("failed to find device for CO detector " .. altid)
+              else
+                -- make sure this device has category_num=4 (Security Sensor)
+                if (luup.attr_get("category_num", child) ~= "4") then
+                  luup.attr_set("category_num", "4", child)
+                end
+                -- make sure this device has subcategory_num=5 (CO Sensor)
+                if (luup.attr_get("subcategory_num", child) ~= "5") then
+                  luup.attr_set("subcategory_num", "5", child)
+                end
+
+                -- set LastTrip to now if Tripped is transitioning from "0" to "1"
+                local newTripped = nestToUpnp(SECURITY_SENSOR_SID, "Tripped", topaz, CO_ID_PREFIX)
+                if newTripped == "1" and luup.variable_get(SECURITY_SENSOR_SID, "Tripped", child) ~= "1" then
+                  writeVariableIfChanged(child, SECURITY_SENSOR_SID, "LastTrip", tostring(os.time()))
+                end
+                writeVariableIfChanged(child, SECURITY_SENSOR_SID, "Tripped", newTripped)
+
+                writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "BatteryLevel", nil, nil, topaz)
+                writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "BatteryDate", nil, topaz)
+                writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "LastUpdate", nil, nil, topaz)
+              end
+
             end
           end
 

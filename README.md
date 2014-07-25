@@ -1,9 +1,9 @@
 <!--	Vera Plugin for Nest Thermostats	-->
 
-![Devices in Vera](http://cocu.la/vera/nest/shot6.jpg)
+![Devices in Vera](http://cocu.la/vera/nest/shot7.jpg)
 
 ## Purpose ##
-This plugin will monitor and control your [Nest][] thermostat(s) through your [Vera][] home automation gateway.
+This plugin will monitor and control your [Nest][] thermostat(s) and/or Protect smoke/CO detector(s) through your [Vera][] home automation gateway.
 
 [nest]: http://www.nest.com
 [vera]: http://www.micasaverde.com
@@ -16,21 +16,25 @@ This plugin will monitor and control your [Nest][] thermostat(s) through your [V
 
 * Set your house to Home or Away, switching all your Nest thermostats to an energy-saving mode when unoccupied.
 
+* Monitor smoke/CO alarm status and battery level.
+
 ## How to Use the Plugin ##
 
 Open the settings for the Nest device that was created at plugin installation, and set your `nest.com` user name and password.  Also choose a polling frequency (in seconds) if you want to poll more or less often than the default 120 seconds.  You may not poll more often than every 60 seconds, as this might be considered abusive by the `nest.com` servers.
 
-Shortly after saving your changes, the plugin will login to `nest.com` and retrieve all of the locations associated with your account, and all the thermostats within each location.  Since the Nest also contains a humidity sensor, the plugin also creates a humidistat device for each thermostat it discovers.  The plugin will create the devices in Vera using the names discovered from `nest.com`.  Shown below is an example list of devices that have been created in your Vera:
+Shortly after saving your changes, the plugin will login to `nest.com` and retrieve all of the locations associated with your account, and all the thermostats and smoke/CO detectors within each location.  Since the thermostat also contains a humidity sensor, the plugin also creates a humidistat device for each thermostat it discovers.  Since the Protect(r) contains both smoke and CO detectors, the plugin will create a separate device for each function.  The plugin will create the devices in Vera using the names discovered from `nest.com`.  Shown below is an example list of devices that have been created in your Vera:
 
-    Nest			(your account information)
-    Home			(your home or other location)
-    Ground Floor	(thermostat functions)
-    Ground Floor	(humidistat functions)
-    Master Bedroom	(2nd thermostat in Home)
-    Master Bedroom	(humidistat functions)
+    Nest			   (your account information)
+    Home			   (your home or other location)
+    Ground Floor	   (thermostat functions)
+    Ground Floor	   (humidistat functions)
+    Master Bedroom	   (2nd thermostat in Home)
+    Master Bedroom	   (humidistat functions)
+    Hallway (Upstairs) (smoke detector)
+    Hallway (Upstairs) (carbon monoxide detector)
     ...
 
-### Controlling the Precision of Reported Temperatures ###
+### Thermostat: Controlling the Precision of Reported Temperatures ###
 
 The Nest thermostat internally reports very precise temperatures in Celsius, but by default the plugin will report whole number values (regardless of whether Fahrenheit or Celsius temperature scales are used).  You can control this however, by specifying your preferred rounding precision with a device variable on the main Nest device called `TemperatureScale`.  The value you provide is the denominator D in the fraction 1/D, the fractional value to which the temperature should be rounded.  For example, providing 2 means that temperatures will be rounded to the nearest 1/2 (0.5) of a degree.  Providing 10 would round to the nearest tenth (0.10) of a degree.
 
@@ -51,19 +55,20 @@ Notes
 
 * The plugin stores your nest.com login credentials in plaintext in device variables which can be displayed clearly in UI5 and potentially other places.  It is hoped that a more secure authentication and access control mechanism will be available in the future.
 
-* Updates to the state of the location, thermostat and humidistat devices can take up to the polling number of seconds (120 by default) to be reflected in the UPnP devices (or as quickly as 5 seconds).  I believe that the current approach will work for almost all users, but please [contact me][me] if you have different needs.
+* Updates to the state of the location, thermostat, humidistat, smoke and carbon monoxide detector devices can take up to the polling number of seconds (120 by default) to be reflected in the UPnP devices (or as quickly as 5 seconds).
 
 [me]: http://forum.micasaverde.com/index.php?action=profile;u=19018
 
-* `BatteryLevel` percentage is tied to a voltage range of 3.6 to 3.9 volts.  Any actual voltage below 3.6 is considered 0% and any voltage above 3.9 is considered 100%.  (Battery level may be important to some users, as the battery is charged by leeching power during heating or cooling.  If there is a problem, the battery level will continue to decline until the device turns off the proximity function, wi-fi and then itself.)
+* For the thermostat, `BatteryLevel` percentage is tied to a voltage range of 3.6 to 3.9 volts.  Any actual voltage below 3.6 is considered 0% and any voltage above 3.9 is considered 100%.  (Battery level may be important to some users, as the battery is charged by leeching power during heating or cooling.  If there is a problem, the battery level will continue to decline until the device turns off the proximity function, wi-fi and then itself.)
+
+* For the smoke/CO detector, `BatteryLevel` percentage is tied to a voltage range of 4200 to 5400 millivolts.  Any actual millivoltage below 4200 is considered 0%
+and any millivoltage above 5400 is considered 100%.  These numbers may change in the future, thereby altering the current percentage after the code change.
 
 * The humidistat device currently only implements the humidity sensor service, but as the [2nd generation Nest thermostats][2g] can also control humidifers and dehumidifiers, this device type will be extended to implement new services.
 
 [2g]: http://nest.com/blog/2012/10/02/the-next-generation-nest-thermostat/
 
 * The "Home/Away" device implements `urn:schemas-upnp-org:service:HouseStatus:1`, but since I didn't find an `S_HouseStatus1.xml` file in my Vera, one is packaged with the plugin. (This device also implements `urn:schemas-upnp-org:service:SwitchPower:1`.)
-
-* The thermostat device creates the `UserSuppliedWattage` variable, set initially to `0,0,0`, but it doesn't yet do anything else to implement the `urn:micasaverde-com:serviceId:EnergyMetering1` service.
 
 ## License ##
 
@@ -104,6 +109,12 @@ Please contact me through the [micasaverde.com forum][me].  All tips are gratefu
 * Implement Humidistat functionality to control humidity from Vera.
 
 ## History ##
+
+### 2014-07-26    v1.7
+
+Enhancement:
+
+* Added the creation of a smoke detector device and carbon monoxide detector device for each Nest Protect(r) that is listed to the user's account at nest.com. ([#32](https://github.com/watou/vera-nest-thermostat/issues/32)).  (Reminder of disclaimer: Do not rely on any of these devices or any aspect of the plugin to protect the health or safety of anyone or anything.  Please read the full license for further information.)
 
 ### 2014-03-22    v1.6
 
