@@ -312,9 +312,10 @@ decompress_lzo_file() {
           elseif sensorType == CO_ID_PREFIX    then return topaz.co_status    == 0 and "0" or "1"
           end
         end,
-        -- don't do "Armed" because it has a default value in the service XML file
         ["LastTrip"] = function(topaz, sensorType) return "0" 
-        end -- only used for device creation
+        end,
+        ["Armed"] = function(topaz, sensorType) return "0"
+        end
       }
     }
 
@@ -550,7 +551,7 @@ decompress_lzo_file() {
               end
               local device = res.device[id]
               local track  = res.track[id]
-              luup.chdev.append(PARENT_DEVICE, ptr, altid, getThermostatName(shared, device, whereMap), "urn:schemas-watou-com:device:NestHumidistat:1",
+              luup.chdev.append(PARENT_DEVICE, ptr, altid, getThermostatName(shared, device, whereMap) .. " Humidity", "urn:schemas-watou-com:device:NestHumidistat:1",
                    "D_NestHumidistat1.xml", "",
                            nestToUpnpParam(HUMIDITY_SENSOR_SID, "CurrentLevel", shared, device) ..
                   "\n" .. nestToUpnpParam(HA_DEVICE_SID, "LastUpdate", track)
@@ -565,10 +566,11 @@ decompress_lzo_file() {
               if (findChild(PARENT_DEVICE, altid) == nil) then
                 added = added + 1
               end
-              luup.chdev.append(PARENT_DEVICE, ptr, altid, getProtectName(topaz, whereMap), "urn:schemas-micasaverde-com:device:SmokeSensor:1",
+              luup.chdev.append(PARENT_DEVICE, ptr, altid, getProtectName(topaz, whereMap) .. " Smoke", "urn:schemas-micasaverde-com:device:SmokeSensor:1",
                   "D_SmokeSensor1.xml", "",
                           nestToUpnpParam(SECURITY_SENSOR_SID, "Tripped",  topaz, SMOKE_ID_PREFIX) ..
                   "\n" .. nestToUpnpParam(SECURITY_SENSOR_SID, "LastTrip", topaz, SMOKE_ID_PREFIX) ..
+                  "\n" .. nestToUpnpParam(SECURITY_SENSOR_SID, "Armed", topaz, SMOKE_ID_PREFIX) ..
                   "\n" .. nestToUpnpParam(HA_DEVICE_SID, "BatteryLevel", nil, nil, topaz) ..
                   "\n" .. nestToUpnpParam(HA_DEVICE_SID, "BatteryDate", nil, topaz) ..
                   "\n" .. nestToUpnpParam(HA_DEVICE_SID, "LastUpdate", nil, nil, topaz)
@@ -578,10 +580,11 @@ decompress_lzo_file() {
               if (findChild(PARENT_DEVICE, altid) == nil) then
                 added = added + 1
               end
-              luup.chdev.append(PARENT_DEVICE, ptr, altid, getProtectName(topaz, whereMap), "urn:schemas-watou-com:device:NestCOSensor:1",
+              luup.chdev.append(PARENT_DEVICE, ptr, altid, getProtectName(topaz, whereMap) .. " CO", "urn:schemas-watou-com:device:NestCOSensor:1",
                   "D_NestCOSensor1.xml", "",
                           nestToUpnpParam(SECURITY_SENSOR_SID, "Tripped",  topaz, CO_ID_PREFIX) ..
                   "\n" .. nestToUpnpParam(SECURITY_SENSOR_SID, "LastTrip", topaz, CO_ID_PREFIX) ..
+                  "\n" .. nestToUpnpParam(SECURITY_SENSOR_SID, "Armed", topaz, CO_ID_PREFIX) ..
                   "\n" .. nestToUpnpParam(HA_DEVICE_SID, "BatteryLevel", nil, nil, topaz) ..
                   "\n" .. nestToUpnpParam(HA_DEVICE_SID, "BatteryDate", nil, topaz) ..
                   "\n" .. nestToUpnpParam(HA_DEVICE_SID, "LastUpdate", nil, nil, topaz)
