@@ -24,14 +24,14 @@ Open the settings for the Nest device that was created at plugin installation, a
 
 Shortly after saving your changes, the plugin will login to `nest.com` and retrieve all of the locations associated with your account, and all the thermostats and smoke/CO detectors within each location.  Since the thermostat also contains a humidity sensor, the plugin also creates a humidistat device for each thermostat it discovers.  Since the Protect(r) contains both smoke and CO detectors, the plugin will create a separate device for each function.  The plugin will create the devices in Vera using the names discovered from `nest.com`.  Shown below is an example list of devices that have been created in your Vera:
 
-    Nest			   (your account information)
-    Home			   (your home or other location)
-    Ground Floor	   (thermostat functions)
-    Ground Floor	   (humidistat functions)
-    Master Bedroom	   (2nd thermostat in Home)
-    Master Bedroom	   (humidistat functions)
-    Hallway (Upstairs) (smoke detector)
-    Hallway (Upstairs) (carbon monoxide detector)
+    Nest						(your account information)
+    Home						(your home or other location)
+    Ground Floor	   			(thermostat functions)
+    Ground Floor Humidity		(humidistat functions)
+    Master Bedroom				(2nd thermostat in Home)
+    Master Bedroom Humidity 	(humidistat functions)
+    Hallway (Upstairs) Smoke 	(smoke detector)
+    Hallway (Upstairs) CO 		(carbon monoxide detector)
     ...
 
 ### Thermostat: Controlling the Precision of Reported Temperatures ###
