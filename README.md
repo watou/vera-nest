@@ -1,6 +1,6 @@
 <!--	Vera Plugin for Nest Thermostats and Smoke and Carbon Monoxide Detectors	-->
 
-![Devices in Vera](http://cocu.la/vera/nest/shot7.jpg)
+![Devices in Vera](http://cocu.la/vera/nest/shot8.jpg)
 
 ## Purpose ##
 This plugin will monitor and control your [Nest][] thermostat(s) and/or Protect smoke/CO detector(s) through your [Vera][] home automation gateway.
@@ -110,12 +110,12 @@ Please contact me through the [micasaverde.com forum][me].  All tips are gratefu
 
 ## History ##
 
-### 2014-07-26    v1.7
+### 2014-07-30    v1.7
 
 Enhancements:
 
-* Added the creation of a smoke detector device and carbon monoxide detector device for each Nest Protect(r) that is listed to the user's account at nest.com. ([#32](https://github.com/watou/vera-nest-thermostat/issues/32)).  (Reminder of disclaimer: Do not rely on any of these devices or any aspect of the plugin to protect the health or safety of anyone or anything.  Please read the full license for further information.)
-* Add "where" location info to device names on device creation ([#33](https://github.com/watou/vera-nest-thermostat/issues/33))
+* Added the creation of a smoke detector device and carbon monoxide detector device for each Nest Protect(r) that is listed in the user's account at nest.com. ([#32](https://github.com/watou/vera-nest-thermostat/issues/32)).  (Reminder of disclaimer: Do not rely on any of these devices or any aspect of the plugin to protect the health or safety of anyone or anything.  Please read the full license for further information.)
+* Add "where" location info to device names (e.g., Hallway, Den, Basement, etc.) on device creation if specified ([#33](https://github.com/watou/vera-nest-thermostat/issues/33))
 * Append meaningful descriptions to child device names (Humidity, Smoke, CO) ([#34](https://github.com/watou/vera-nest-thermostat/issues/34))
 
 ### 2014-03-22    v1.6
