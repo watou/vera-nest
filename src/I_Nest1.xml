@@ -107,7 +107,7 @@ decompress_lzo_file() {
 
     -- main functions
 
-    local PLUGIN_VERSION = "1.7"
+    local PLUGIN_VERSION = "1.8"
 
     local NEST_SID = "urn:watou-com:serviceId:Nest1"
     local NEST_STRUCTURE_SID = "urn:watou-com:serviceId:NestStructure1"
@@ -910,11 +910,6 @@ decompress_lzo_file() {
 
     function init(lul_device)
       log("plugin version " .. PLUGIN_VERSION .. " starting up...", 50)
-
-      if (luup.version_branch &lt; 1 or luup.version_major &lt; 5 or luup.version_minor &lt; 408 ) then
-        task("Version 1.5.408 minimum required to run")
-        return false
-      end
 
       PARENT_DEVICE = lul_device
 

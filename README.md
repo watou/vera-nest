@@ -110,6 +110,12 @@ Please contact me through the [micasaverde.com forum][me].  All tips are gratefu
 
 ## History ##
 
+### 2014-08-08    v1.8
+
+Fixed issue:
+
+* Remove bad version checking code ([#35](https://github.com/watou/vera-nest-thermostat/issues/35))
+
 ### 2014-07-30    v1.7
 
 Enhancements:
