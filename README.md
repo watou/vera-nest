@@ -49,11 +49,11 @@ Notes
 
 ## Notes and Limitations ##
 
-* Only works with Vera UI5 1.5.408 or later.  These days, it is only being tested on UI5 1.5.622, the latest as of this writing.
+* I am presently only able to test the plugin against UI5 (1.5.622), but there are reports that it is working properly against the latest UI7 firmware.
 
 * The plugin is based on an unsupported interface to Nest, which may break or otherwise become inaccessible at any time.
 
-* The plugin stores your nest.com login credentials in plaintext in device variables which can be displayed clearly in UI5 and potentially other places.  It is hoped that a more secure authentication and access control mechanism will be available in the future.
+* The plugin stores your nest.com login credentials in plaintext in device variables which can be displayed clearly in UI5 and potentially other places.
 
 * Updates to the state of the location, thermostat, humidistat, smoke and carbon monoxide detector devices can take up to the polling number of seconds (120 by default) to be reflected in the UPnP devices (or as quickly as 5 seconds).
 
