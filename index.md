@@ -1,6 +1,14 @@
-<!--	Vera Plugin for Nest Thermostats and Smoke and Carbon Monoxide Detectors	-->
-
-![Devices in Vera](http://cocu.la/vera/nest/shot8.jpg)
+---
+title: Vera Plugin for Nest Thermostats and Smoke and Carbon Monoxide Detectors
+excerpt: "Control your Nest thermostats and smoke/CO detectors with Vera."
+layout: page
+categories: projects
+toc: true
+tags: vera nest thermostat plugin mios
+modified: 2014-08-08
+image:
+  teaser: teaser-nest.jpg
+---
 
 ## Purpose ##
 This plugin will monitor and control your [Nest][] thermostat(s) and/or Protect smoke/CO detector(s) through your [Vera][] home automation gateway.
@@ -18,17 +26,22 @@ This plugin will monitor and control your [Nest][] thermostat(s) and/or Protect 
 
 * Monitor smoke/CO alarm status and battery level.
 
+<figure>
+  <img src="images/screen-shot.jpg" alt="Devices in Vera">
+  <figcaption>An example of the Nest devices shown in Vera (UI5).</figcaption>
+</figure>
+
 ## How to Use the Plugin ##
 
 Open the settings for the Nest device that was created at plugin installation, and set your `nest.com` user name and password.  Also choose a polling frequency (in seconds) if you want to poll more or less often than the default 120 seconds.  You may not poll more often than every 60 seconds, as this might be considered abusive by the `nest.com` servers.
 
 Shortly after saving your changes, the plugin will login to `nest.com` and retrieve all of the locations associated with your account, and all the thermostats and smoke/CO detectors within each location.  Since the thermostat also contains a humidity sensor, the plugin also creates a humidistat device for each thermostat it discovers.  Since the Protect(r) contains both smoke and CO detectors, the plugin will create a separate device for each function.  The plugin will create the devices in Vera using the names discovered from `nest.com`.  Shown below is an example list of devices that have been created in your Vera:
 
-    Nest						(your account information)
-    Home						(your home or other location)
-    Ground Floor	   			(thermostat functions)
+    Nest				(your account information)
+    Home				(your home or other location)
+    Ground Floor	   		(thermostat functions)
     Ground Floor Humidity		(humidistat functions)
-    Master Bedroom				(2nd thermostat in Home)
+    Master Bedroom			(2nd thermostat in Home)
     Master Bedroom Humidity 	(humidistat functions)
     Hallway (Upstairs) Smoke 	(smoke detector)
     Hallway (Upstairs) CO 		(carbon monoxide detector)
