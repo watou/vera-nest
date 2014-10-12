@@ -1,13 +1,6 @@
 ---
 title: Vera Plugin for Nest Thermostats and Smoke and Carbon Monoxide Detectors
-excerpt: "Control your Nest thermostats and smoke/CO detectors with Vera."
 layout: page
-categories: projects
-toc: true
-tags: vera nest thermostat plugin mios
-modified: 2014-08-08
-image:
-  teaser: teaser-nest.jpg
 ---
 
 ## Purpose ##
