@@ -4,7 +4,7 @@ title: Vera Plugin for Nest
 description: > # this means to ignore newlines until "baseurl:"
   This plugin will monitor and control your Nest thermostat(s) 
   and/or Protect smoke/CO detector(s) through your Vera home automation gateway.
-baseurl: "/vera-nest-thermostat/" # the subpath of your site, e.g. /blog/
+baseurl: "/vera-nest" # the subpath of your site, e.g. /blog/
 url: "http://watou.github.io" # the base hostname & protocol for your site
 twitter_username: jcocula
 github_username:  watou
