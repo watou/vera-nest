@@ -1,0 +1,1219 @@
+<?xml version="1.0"?>
+<!-- 
+ MiOS (Vera) Plugin for Nest Thermostats
+
+ Copyright (C) 2012  John W. Cocula and others
+
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-->
+<implementation>
+  <functions>
+    -- [The following is from Hugh Eaves' I_RTCOA_Wifi_ZoneThermostat1.xml.
+    -- He figured out how to work around problems in deploying compressed
+    -- modules. Please cite him as copyright owner under the GPL license terms.]
+		-- Using "require" to access compressed modules doesn't work if the 
+		-- module is declared without using the "module" function.
+		-- (see http://bugs.micasaverde.com/view.php?id=2276 )
+		--
+		-- We work around this with a shell script that executes pluto-lzo
+		-- to decompress the module. The temp file is used to
+		-- avoid a race condition when multiple instances of this module
+		-- start at the same time. (to prevent one instance from loading a 
+		-- partially decompressed file from another instance)
+    local decompressScript = [[
+decompress_lzo_file() {
+	SRC_FILE=/etc/cmh-ludl/$1.lzo
+	DEST_FILE=/etc/cmh-ludl/$1
+	if [ ! -e $DEST_FILE -o $SRC_FILE -nt $DEST_FILE ]
+	then
+		TEMP_FILE=$(mktemp)
+		pluto-lzo d $SRC_FILE $TEMP_FILE
+		mv $TEMP_FILE $DEST_FILE
+	fi
+}
+]]
+
+		os.execute(decompressScript .. "decompress_lzo_file L_nest_dkjson.lua")
+		os.execute(decompressScript .. "decompress_lzo_file L_nest_urlcode.lua")
+
+    local MSG_CLASS = "Nest"
+    local DEBUG_MODE = true
+    local taskHandle = -1
+    local TASK_ERROR = 2
+    local TASK_ERROR_PERM = -2
+    local TASK_SUCCESS = 4
+    local TASK_BUSY = 1
+
+    -- utility functions
+
+    local function log(text, level)
+      luup.log(MSG_CLASS .. ": " .. text, (level or 1))
+    end
+
+    local function debug(text)
+      if (DEBUG_MODE) then
+        log("debug: " .. text, 35)
+      end
+    end
+
+    local function task(text, mode)
+      local mode = mode or TASK_ERROR
+      if (mode ~= TASK_SUCCESS) then
+        log("task: " .. text, 50)
+      end
+      taskHandle = luup.task(text, (mode == TASK_ERROR_PERM) and TASK_ERROR or mode, MSG_CLASS, taskHandle)
+    end
+
+    local function readVariableOrInit(lul_device, serviceId, name, defaultValue) 
+      local var = luup.variable_get(serviceId, name, lul_device)
+      if (var == nil) then
+        var = defaultValue
+        luup.variable_set(serviceId, name, var, lul_device)
+      end
+      return var
+    end
+
+    local function writeVariable(lul_device, serviceId, name, value) 
+      luup.variable_set(serviceId, name, value, lul_device)
+    end
+
+    local Logging = 0
+    local function writeVariableIfChanged(lul_device, serviceId, name, value)
+      local curValue = luup.variable_get(serviceId, name, lul_device)
+      if (Logging == 1) or (value ~= curValue) then
+        writeVariable(lul_device, serviceId, name, value)
+      end
+      return value ~= curValue
+    end
+
+    local function findChild(deviceId, label)
+      for k, v in pairs(luup.devices) do
+        if (v.device_num_parent == deviceId and v.id == label) then
+          return k
+        end
+      end
+    end
+
+    -- main functions
+
+    local PLUGIN_VERSION = "1.8"
+
+    local NEST_SID = "urn:watou-com:serviceId:Nest1"
+    local NEST_STRUCTURE_SID = "urn:watou-com:serviceId:NestStructure1"
+    local HOUSE_STATUS_SID = "urn:upnp-org:serviceId:HouseStatus1"
+    local TEMP_SENSOR_SID = "urn:upnp-org:serviceId:TemperatureSensor1"
+    local TEMP_SETPOINT_HEAT_SID = "urn:upnp-org:serviceId:TemperatureSetpoint1_Heat"
+    local TEMP_SETPOINT_COOL_SID = "urn:upnp-org:serviceId:TemperatureSetpoint1_Cool"
+    local HUMIDITY_SENSOR_SID = "urn:micasaverde-com:serviceId:HumiditySensor1"
+    local HVAC_FAN_SID = "urn:upnp-org:serviceId:HVAC_FanOperatingMode1"
+    local HVAC_USER_SID = "urn:upnp-org:serviceId:HVAC_UserOperatingMode1"
+    local HVAC_STATE_SID = "urn:micasaverde-com:serviceId:HVAC_OperatingState1"
+    local HA_DEVICE_SID = "urn:micasaverde-com:serviceId:HaDevice1"
+    local SWITCH_POWER_SID = "urn:upnp-org:serviceId:SwitchPower1"
+    local MCV_ENERGY_METERING_SID = "urn:micasaverde-com:serviceId:EnergyMetering1"
+    local SECURITY_SENSOR_SID = "urn:micasaverde-com:serviceId:SecuritySensor1"
+    local DEFAULT_POLL = 120
+    local MIN_POLL = 60
+    local SOON = "5" -- seconds
+    local NEST_UA = "Nest/1.1.0.10 CFNetwork/548.0.4"
+    local NEST_BATTERY_LOW = 3.6
+    local NEST_BATTERY_HIGH = 3.9
+    local PROTECT_BATTERY_LOW = 4200  -- guess, TBD
+    local PROTECT_BATTERY_HIGH = 5400  -- 1.8v full voltage of 3 lithium AA batteries
+
+    local STRUCTURE_ID_PREFIX  = "loc."
+    local THERMOSTAT_ID_PREFIX = "therm."
+    local HUMIDISTAT_ID_PREFIX = "humid."
+    local SMOKE_ID_PREFIX      = "smoke."
+    local CO_ID_PREFIX         = "co."
+
+    local PARENT_DEVICE, https, urlcode
+
+    local dkjson = require("L_nest_dkjson")
+
+    local veraTemperatureScale = "F"
+
+    local function getVeraTemperatureScale()
+      local code, data = luup.inet.wget("http://localhost:3480/data_request?id=lu_sdata")
+      
+      if (code == 0) then
+        data = json.decode(data)
+      end
+
+      veraTemperatureScale = ((code == 0) and (data ~= nil) and (data.temperature ~= nil)) and data.temperature or "F"
+    end
+
+    local function getStructureId(altid)
+      local i, j = string.find(altid, STRUCTURE_ID_PREFIX)
+      return (i == nil) and altid or string.sub(altid, j+1)
+    end
+
+    local function getThermostatId(altid)
+      local i, j = string.find(altid, THERMOSTAT_ID_PREFIX)
+      return (i == nil) and altid or string.sub(altid, j+1)
+    end
+
+    local function getHumidistatId(altid)
+      local i, j = string.find(altid, HUMIDISTAT_ID_PREFIX)
+      return (i == nil) and altid or string.sub(altid, j+1)
+    end
+
+    local function round(value, precision)
+      return (value >= 0) and
+        (math.floor(value * precision + 0.5) / precision) or
+        (math.ceil(value * precision - 0.5) / precision)
+    end
+
+    local TemperaturePrecision = 1
+
+    -- convert thermostat format (C) to local format (C or F)
+    local function localizeTemp(temperature)
+      return (veraTemperatureScale == "C") and round(temperature, TemperaturePrecision) or
+             round(((temperature + 0.0) * 1.8) + 32, TemperaturePrecision)
+    end
+
+    -- convert local format (C or F) to thermostat format (C)
+    local function delocalizeTemp(temperature)
+      return (veraTemperatureScale == "C") and temperature or
+             round(((temperature + 0.0) - 32.0) / 1.8, 1000)
+    end
+
+    -- convert Nest values to UPnP values
+    local NEST_TO_UPNP = {
+      [NEST_SID] = {
+      },
+      [NEST_STRUCTURE_SID] = {
+        ["StreetAddress"] = function(structure) return structure.street_address or "" end,
+        ["Location"] = function(structure) return structure.location or "" end,
+        ["PostalCode"] = function(structure) return structure.postal_code or "" end,
+        ["CountryCode"] = function(structure) return structure.country_code or "" end
+      },
+      [HOUSE_STATUS_SID] = {
+        ["OccupancyState"] = function(structure) return structure.away and "Unoccupied" or "Occupied" end
+      },
+      [SWITCH_POWER_SID] = {
+        ["Status"] = function(structure) return structure.away and "0" or "1" end
+      },
+      [TEMP_SENSOR_SID] = {
+        ["Application"] = function() return "Room" end,
+        ["CurrentTemperature"] = function(shared, device) return tostring(localizeTemp(shared.current_temperature)) end
+      },
+      [TEMP_SETPOINT_HEAT_SID] = {
+        ["Application"] = function() return "Heating" end,
+        ["CurrentSetpoint"] = function(shared, device)
+            return (shared.target_temperature_type == "heat") and
+              tostring(localizeTemp(shared.target_temperature)) or
+              tostring(localizeTemp(shared.target_temperature_low))
+          end
+      },
+      [TEMP_SETPOINT_COOL_SID] = {
+        ["Application"] = function() return "Cooling" end,
+        ["CurrentSetpoint"] = function(shared, device)
+            return (shared.target_temperature_type == "cool") and
+              tostring(localizeTemp(shared.target_temperature)) or
+              tostring(localizeTemp(shared.target_temperature_high))
+          end
+      },
+      [HUMIDITY_SENSOR_SID] = {
+        ["CurrentLevel"] = function(shared, device) return tostring(device.current_humidity) end
+      },
+      [HVAC_FAN_SID] = {
+        ["Mode"] = function(shared, device)
+          if not device.has_fan then return "Off"
+          elseif (device.fan_mode == "on") then return "ContinuousOn"
+          elseif (device.fan_mode == "auto") then return "Auto"
+          else return "Auto"
+          end
+        end,
+        ["FanStatus"] = function(shared, device) return shared.hvac_fan_state and "On" or "Off" end
+      },
+      [HVAC_USER_SID] = {
+        ["ModeStatus"] = function(shared, device)
+          if     (shared.target_temperature_type == "heat")  then return "HeatOn"
+          elseif (shared.target_temperature_type == "cool")  then return "CoolOn"
+          elseif (shared.target_temperature_type == "range") then return "AutoChangeOver"
+          elseif (shared.target_temperature_type == "off")   then return "Off"
+          else return "InDeadBand"
+          end
+        end
+      },
+      [HVAC_STATE_SID] = {
+        ["ModeState"] = function(shared, device)
+          if (device.switch_system_off) then return "Off"
+          elseif (shared.hvac_heater_state) then return "Heating"
+          elseif (shared.hvac_ac_state) then return "Cooling"
+          elseif (shared.hvac_fan_state) then return "FanOnly"
+          else return "Idle"
+          end
+        end
+      },
+      [HA_DEVICE_SID] = {
+        ["Commands"] = function(shared, device)
+          local commands = "hvac_off,hvac_auto,hvac_state,heating_setpoint,cooling_setpoint"
+          if shared.can_heat then
+          	commands = commands .. ",hvac_heat"
+          end
+          if shared.can_cool then
+          	commands = commands .. ",hvac_cool"
+          end
+          if device.has_fan then
+            commands = commands .. ",fan_label,fan_auto,fan_on"
+          end
+          return commands
+        end,
+        ["BatteryLevel"] = function(shared, device, topaz)
+          if topaz then
+            local millivolts = tonumber(topaz.battery_level)
+            if (millivolts == nil) then return "0"
+            else
+              millivolts = (millivolts &lt; PROTECT_BATTERY_LOW) and PROTECT_BATTERY_LOW or millivolts
+              millivolts = (millivolts &gt; PROTECT_BATTERY_HIGH) and PROTECT_BATTERY_HIGH or millivolts
+              local percent = ((millivolts - PROTECT_BATTERY_LOW) * 100.0) / (PROTECT_BATTERY_HIGH - PROTECT_BATTERY_LOW)
+              return tostring(math.floor(percent))
+            end
+          else
+            local volts = tonumber(device.battery_level)
+            if (volts == nil) then return "0"
+            else
+              volts = (volts &lt; NEST_BATTERY_LOW) and NEST_BATTERY_LOW or volts
+              volts = (volts &gt; NEST_BATTERY_HIGH) and NEST_BATTERY_HIGH or volts
+              local percent = ((volts - NEST_BATTERY_LOW) * 100.0) / (NEST_BATTERY_HIGH - NEST_BATTERY_LOW)
+              return tostring(math.floor(percent))
+            end
+          end
+        end,
+       ["BatteryDate"] = function(track, topaz)
+          return tostring(math.floor((topaz and topaz["$timestamp"] or track.last_connection) / 1000))
+        end,
+       ["LastUpdate"] = function(track, structure, topaz)
+         if     (type(track) == "table")     then return tostring(math.floor(track.last_connection / 1000))
+         elseif (type(structure) == "table") then return tostring(math.floor(structure["$timestamp"] / 1000))
+         elseif (type(topaz) == "table")     then return tostring(math.floor(topaz["$timestamp"] / 1000))
+         end
+        end
+      },
+      [MCV_ENERGY_METERING_SID] = {
+        ["UserSuppliedWattage"] = function(shared, device) return "0,0,0" end
+      },
+      [SECURITY_SENSOR_SID] = {
+        ["Tripped"] = function(topaz, sensorType)
+          if     sensorType == SMOKE_ID_PREFIX then return topaz.smoke_status == 0 and "0" or "1"
+          elseif sensorType == CO_ID_PREFIX    then return topaz.co_status    == 0 and "0" or "1"
+          end
+        end,
+        ["LastTrip"] = function(topaz, sensorType) return "0" 
+        end,
+        ["Armed"] = function(topaz, sensorType) return "0"
+        end
+      }
+    }
+
+    local function nestToUpnp(serviceId, variableName, ...)
+      return NEST_TO_UPNP[serviceId][variableName](...)
+    end
+
+    local function nestToUpnpParam(serviceId, variableName, ...)
+      return serviceId .. "," .. variableName .. "=" .. nestToUpnp(serviceId, variableName, ...)
+    end
+
+    local function writeVariableFromNest(lul_device, serviceId, name, ...)
+      writeVariable(lul_device, serviceId, name, nestToUpnp(serviceId, name, ...))
+    end
+
+    local function writeVariableFromNestIfChanged(lul_device, serviceId, name, ...)
+      return writeVariableIfChanged(lul_device, serviceId, name, nestToUpnp(serviceId, name, ...))
+    end
+
+    -- convert UPnP values to Nest values
+    local UPNP_TO_NEST = {
+      [HVAC_USER_SID] = {
+        ["ModeTarget"] = function(ModeTarget)
+          if     (ModeTarget == "HeatOn")         then return "heat"
+          elseif (ModeTarget == "CoolOn")         then return "cool"
+          elseif (ModeTarget == "AutoChangeOver") then return "range"
+          elseif (ModeTarget == "Off")            then return "off"
+          end
+        end
+      }
+    }
+
+    local function upnpToNest(serviceId, variableName, ...)
+      return UPNP_TO_NEST[serviceId][variableName](...)
+    end
+
+    local function readSettings()
+      local data = {}
+
+      -- Config variables
+      data.username = readVariableOrInit(PARENT_DEVICE, NEST_SID, "username", "" )
+      data.password = readVariableOrInit(PARENT_DEVICE, NEST_SID, "password", "" )
+      data.period   = tonumber(readVariableOrInit(PARENT_DEVICE, NEST_SID, "period", tostring(DEFAULT_POLL)))
+      data.period   = data.period or DEFAULT_POLL
+      data.period   = (data.period &lt; MIN_POLL) and MIN_POLL or data.period 
+
+      -- Internal variables
+      data.transport_url = readVariableOrInit(PARENT_DEVICE, NEST_SID, "transport_url", "")
+      data.userid = readVariableOrInit(PARENT_DEVICE, NEST_SID, "userid", "")
+      data.access_token = readVariableOrInit(PARENT_DEVICE, NEST_SID, "access_token", "")
+
+      return data
+    end
+
+    local function saveSession(transport_url, userid, access_token)
+      writeVariable(PARENT_DEVICE, NEST_SID, "transport_url", transport_url)
+      writeVariable(PARENT_DEVICE, NEST_SID, "userid", userid)
+      writeVariable(PARENT_DEVICE, NEST_SID, "access_token", access_token)
+
+      local status = (transport_url ~= "" and userid ~= "" and access_token ~= "")
+      writeVariable(PARENT_DEVICE, NEST_SID, "status", status and "1" or "0")
+    end
+
+    local function clearSession()
+      saveSession("", "", "")
+    end
+
+    local function makeWhereMap(res)
+      local whereMap = {}
+      if res.where then
+        for k,v in pairs(res.where) do
+          if v.wheres then
+            for i,entry in ipairs(v.wheres) do
+              whereMap[entry.where_id] = entry.name
+            end
+          end
+        end
+      end
+      return whereMap
+    end
+
+    local function getThermostatName(shared, device, whereMap)
+      local name = shared.name or ""
+      local label = (device.where_id and whereMap[device.where_id]) and whereMap[device.where_id] or ""
+      local parens = (name ~= "" and label ~= "")
+      return name .. (parens and " (" or "") .. label .. (parens and ")" or "")
+    end
+
+    local function getProtectName(topaz, whereMap)
+      local name = topaz.description or ""
+      local label = (topaz.where_id and whereMap[topaz.where_id]) and whereMap[topaz.where_id] or ""
+      local parens = (name ~= "" and label ~= "")
+      return name .. (parens and " (" or "") .. label .. (parens and ")" or "")
+    end
+
+    -- login to nest.com if we think we need to
+    -- return a loginSettings table on success or nil
+    local function login()
+      -- debug("in login()")
+
+      local data = readSettings()
+
+      -- if there is no username or password, then no matter what, don't proceed
+      if (data.username == "" or data.password == "") then
+        task("Please specify username and password.")
+        clearSession()
+        return
+      end
+
+      -- if there is old session data, it might still be good, so try it!
+      if (data.transport_url ~= "" and data.userid ~= "" and data.access_token ~= "") then
+        debug("assuming saved login credentials are still valid.")
+        return data
+      end
+
+      -- perform https POST to nest.com to login
+      local res = {}
+      local body = urlcode.encodetable{username = data.username, password = data.password}
+      local headers = {["user-agent"] = NEST_UA,
+                       ["content-length"] = string.len(body),
+                       ["content-type"] = "application/x-www-form-urlencoded"}
+      local url = { url = "https://home.nest.com/user/login",
+                    protocol = "tlsv1",
+                    method = "POST",
+                    source = ltn12.source.string(body),
+                    sink = ltn12.sink.table(res),
+                    headers = headers }
+
+      local one, code, headers, status = https.request(url)
+
+      if (code == 200) then
+        res = json.decode(table.concat(res))
+
+        data.transport_url = res.urls.transport_url
+        data.userid = res.userid
+        data.access_token = res.access_token
+
+        task("Successful nest.com login.", TASK_SUCCESS)
+        saveSession(data.transport_url, data.userid, data.access_token)
+        return data
+      else
+        task("Failed to login: code=" .. tostring(code) .. ", status=" .. tostring(status))
+        clearSession()
+      end
+    end
+
+    local statusOutstanding = false
+    
+    function getStatus()
+      -- debug("in getStatus()")
+      statusOutstanding = false
+
+      local session = login()
+
+      if (session ~= nil) then
+        -- perform https GET to nest.com to get status
+        local res = {}
+        local headers = {["user-agent"] = NEST_UA,
+                         ["Authorization"] = "Basic " .. session.access_token,
+                         ["X-nl-user-id"] = session.userid,
+                         ["X-nl-protocol-version"] = "1"}
+        local url = { url = session.transport_url .. "/v2/mobile/user." .. session.userid,
+                      protocol = "tlsv1",
+                      method = "GET",
+                      sink = ltn12.sink.table(res),
+                      headers = headers }
+
+        local one, code, headers, status = https.request(url)
+
+        res = json.decode(table.concat(res))
+
+        if (code ~= 200) or type(res) ~= "table" or not (res.shared or res.topaz) then
+          log("error getting status from nest.com with HTTP code=" .. tostring(code) .. ", status=" .. tostring(status))
+          -- assume there is something wrong with the session
+          clearSession()
+        else
+          debug("success getting status from nest.com")
+
+          local whereMap = makeWhereMap(res)
+
+          -- create any missing structure, thermostat, humidistat, smoke and CO children devices, remove any wrong ones
+          local added = 0
+          local ptr = luup.chdev.start(PARENT_DEVICE)
+
+          if res.structure then
+            for id,structure in pairs(res.structure) do
+              local altid = STRUCTURE_ID_PREFIX .. id
+              if (findChild(PARENT_DEVICE, altid) == nil) then
+                added = added + 1
+              end
+              luup.chdev.append(PARENT_DEVICE, ptr, altid, structure.name, "urn:schemas-watou-com:device:NestStructure:1",
+                   "D_NestStructure1.xml", "",
+                           nestToUpnpParam(HOUSE_STATUS_SID, "OccupancyState", structure) ..
+                   "\n" .. nestToUpnpParam(NEST_STRUCTURE_SID, "StreetAddress", structure) ..
+                   "\n" .. nestToUpnpParam(NEST_STRUCTURE_SID, "Location", structure) ..
+                   "\n" .. nestToUpnpParam(NEST_STRUCTURE_SID, "PostalCode", structure) ..
+                   "\n" .. nestToUpnpParam(NEST_STRUCTURE_SID, "CountryCode", structure) ..
+                   "\n" .. nestToUpnpParam(HA_DEVICE_SID, "LastUpdate", nil, structure) ..
+                   "\n" .. nestToUpnpParam(SWITCH_POWER_SID, "Status", structure)
+                  , false, false)
+            end
+          end
+
+          if res.shared then
+            for id,shared in pairs(res.shared) do
+              local altid = THERMOSTAT_ID_PREFIX .. id
+              if (findChild(PARENT_DEVICE, altid) == nil) then
+                added = added + 1
+              end
+              local device = res.device[id]
+              local track  = res.track[id]
+              luup.chdev.append(PARENT_DEVICE, ptr, altid, getThermostatName(shared, device, whereMap), "urn:schemas-watou-com:device:HVAC_ZoneThermostat:1",
+                   "D_NestThermostat1.xml", "",
+                           nestToUpnpParam(TEMP_SENSOR_SID, "CurrentTemperature", shared, device) ..
+                   "\n" .. nestToUpnpParam(TEMP_SETPOINT_HEAT_SID, "CurrentSetpoint", shared, device) ..
+                   "\n" .. nestToUpnpParam(TEMP_SETPOINT_COOL_SID, "CurrentSetpoint", shared, device) ..
+                   "\n" .. nestToUpnpParam(HVAC_FAN_SID, "Mode", shared, device) ..
+                   "\n" .. nestToUpnpParam(HVAC_FAN_SID, "FanStatus", shared, device) ..
+                   "\n" .. nestToUpnpParam(HVAC_USER_SID, "ModeStatus", shared, device) ..
+                   "\n" .. nestToUpnpParam(HVAC_STATE_SID, "ModeState", shared, device) ..
+                   "\n" .. nestToUpnpParam(HA_DEVICE_SID, "Commands", shared, device) ..
+                   "\n" .. nestToUpnpParam(HA_DEVICE_SID, "BatteryLevel", shared, device) ..
+                   "\n" .. nestToUpnpParam(HA_DEVICE_SID, "BatteryDate", track) ..
+                   "\n" .. nestToUpnpParam(HA_DEVICE_SID, "LastUpdate", track) ..
+                   "\n" .. nestToUpnpParam(MCV_ENERGY_METERING_SID, "UserSuppliedWattage", shared, device)
+                   , false, false)
+            end
+
+            for id,shared in pairs(res.shared) do
+              local altid = HUMIDISTAT_ID_PREFIX .. id
+              if (findChild(PARENT_DEVICE, altid) == nil) then
+                added = added + 1
+              end
+              local device = res.device[id]
+              local track  = res.track[id]
+              luup.chdev.append(PARENT_DEVICE, ptr, altid, getThermostatName(shared, device, whereMap) .. " Humidity", "urn:schemas-watou-com:device:NestHumidistat:1",
+                   "D_NestHumidistat1.xml", "",
+                           nestToUpnpParam(HUMIDITY_SENSOR_SID, "CurrentLevel", shared, device) ..
+                  "\n" .. nestToUpnpParam(HA_DEVICE_SID, "LastUpdate", track)
+                   , false, false)
+            end
+          end
+
+          -- add any smoke and CO detectors
+          if res.topaz then
+            for id,topaz in pairs(res.topaz) do
+              local altid = SMOKE_ID_PREFIX .. id
+              if (findChild(PARENT_DEVICE, altid) == nil) then
+                added = added + 1
+              end
+              luup.chdev.append(PARENT_DEVICE, ptr, altid, getProtectName(topaz, whereMap) .. " Smoke", "urn:schemas-micasaverde-com:device:SmokeSensor:1",
+                  "D_SmokeSensor1.xml", "",
+                          nestToUpnpParam(SECURITY_SENSOR_SID, "Tripped",  topaz, SMOKE_ID_PREFIX) ..
+                  "\n" .. nestToUpnpParam(SECURITY_SENSOR_SID, "LastTrip", topaz, SMOKE_ID_PREFIX) ..
+                  "\n" .. nestToUpnpParam(SECURITY_SENSOR_SID, "Armed", topaz, SMOKE_ID_PREFIX) ..
+                  "\n" .. nestToUpnpParam(HA_DEVICE_SID, "BatteryLevel", nil, nil, topaz) ..
+                  "\n" .. nestToUpnpParam(HA_DEVICE_SID, "BatteryDate", nil, topaz) ..
+                  "\n" .. nestToUpnpParam(HA_DEVICE_SID, "LastUpdate", nil, nil, topaz)
+                  , false, false)
+
+              altid = CO_ID_PREFIX .. id
+              if (findChild(PARENT_DEVICE, altid) == nil) then
+                added = added + 1
+              end
+              luup.chdev.append(PARENT_DEVICE, ptr, altid, getProtectName(topaz, whereMap) .. " CO", "urn:schemas-watou-com:device:NestCOSensor:1",
+                  "D_NestCOSensor1.xml", "",
+                          nestToUpnpParam(SECURITY_SENSOR_SID, "Tripped",  topaz, CO_ID_PREFIX) ..
+                  "\n" .. nestToUpnpParam(SECURITY_SENSOR_SID, "LastTrip", topaz, CO_ID_PREFIX) ..
+                  "\n" .. nestToUpnpParam(SECURITY_SENSOR_SID, "Armed", topaz, CO_ID_PREFIX) ..
+                  "\n" .. nestToUpnpParam(HA_DEVICE_SID, "BatteryLevel", nil, nil, topaz) ..
+                  "\n" .. nestToUpnpParam(HA_DEVICE_SID, "BatteryDate", nil, topaz) ..
+                  "\n" .. nestToUpnpParam(HA_DEVICE_SID, "LastUpdate", nil, nil, topaz)
+                  , false, false)
+            end
+          end
+
+          luup.chdev.sync(PARENT_DEVICE, ptr)
+          if (added > 0) then
+            debug("Added " .. added .. " children device(s); awaiting restart...")
+            return
+          end
+
+          -- update all structure, thermostat, humidistat, smoke and CO children devices
+
+          if res.structure then
+            for id,structure in pairs(res.structure) do
+              local altid = STRUCTURE_ID_PREFIX .. id
+              local child = findChild(PARENT_DEVICE, altid)
+              if (child == nil) then
+                log("failed to find device for structure " .. altid)
+              else
+                -- make sure this device has category_num=5
+                if (luup.attr_get("category_num", child) ~= "5") then
+                  luup.attr_set("category_num", "5", child)
+                end
+                writeVariableFromNestIfChanged(child, HOUSE_STATUS_SID, "OccupancyState", structure)
+                writeVariableFromNestIfChanged(child, SWITCH_POWER_SID, "Status", structure)
+                writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "LastUpdate", nil, structure)
+              end
+            end
+          end
+
+          if res.shared then
+            for id,shared in pairs(res.shared) do
+              local altid = THERMOSTAT_ID_PREFIX .. id
+              local child = findChild(PARENT_DEVICE, altid)
+              if (child == nil) then
+                log("failed to find device for thermostat " .. altid)
+              else
+                -- make sure this device has category_num=5
+                if (luup.attr_get("category_num", child) ~= "5") then
+                  luup.attr_set("category_num", "5", child)
+                end
+
+                local device = res.device[id]
+                local track  = res.track[id]
+                writeVariableFromNestIfChanged(child, TEMP_SENSOR_SID, "CurrentTemperature", shared, device)
+                writeVariableFromNestIfChanged(child, TEMP_SETPOINT_HEAT_SID, "CurrentSetpoint", shared, device)
+                writeVariableFromNestIfChanged(child, TEMP_SETPOINT_COOL_SID, "CurrentSetpoint", shared, device)
+                writeVariableFromNestIfChanged(child, HVAC_FAN_SID, "Mode", shared, device)
+                writeVariableFromNestIfChanged(child, HVAC_FAN_SID, "FanStatus", shared, device)
+                writeVariableFromNestIfChanged(child, HVAC_USER_SID, "ModeStatus", shared, device)
+                writeVariableFromNestIfChanged(child, HVAC_STATE_SID, "ModeState", shared, device)
+                writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "Commands", shared, device)
+                writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "BatteryLevel", shared, device)
+                writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "BatteryDate", track)
+                writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "LastUpdate", track)
+              end
+            end
+
+            for id,shared in pairs(res.shared) do
+              local altid = HUMIDISTAT_ID_PREFIX .. id
+              local child = findChild(PARENT_DEVICE, altid)
+              if (child == nil) then
+                log("failed to find device for humidistat " .. altid)
+              else
+                -- make sure this device has category_num=16
+                if (luup.attr_get("category_num", child) ~= "16") then
+                  luup.attr_set("category_num", "16", child)
+                end
+                local device = res.device[id]
+                local track  = res.track[id]
+                writeVariableFromNestIfChanged(child, HUMIDITY_SENSOR_SID, "CurrentLevel", shared, device)
+                writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "LastUpdate", track)
+              end
+            end
+          end
+
+          if res.topaz then
+            for id,topaz in pairs(res.topaz) do
+              local altid = SMOKE_ID_PREFIX .. id
+              local child = findChild(PARENT_DEVICE, altid)
+              if (child == nil) then
+                log("failed to find device for smoke detector " .. altid)
+              else
+                -- make sure this device has category_num=4 (Security Sensor)
+                if (luup.attr_get("category_num", child) ~= "4") then
+                  luup.attr_set("category_num", "4", child)
+                end
+                -- make sure this device has subcategory_num=4 (Smoke Sensor)
+                if (luup.attr_get("subcategory_num", child) ~= "4") then
+                  luup.attr_set("subcategory_num", "4", child)
+                end
+
+                -- set LastTrip to now if Tripped is transitioning from "0" to "1"
+                local newTripped = nestToUpnp(SECURITY_SENSOR_SID, "Tripped", topaz, SMOKE_ID_PREFIX)
+                if newTripped == "1" and luup.variable_get(SECURITY_SENSOR_SID, "Tripped", child) ~= "1" then
+                  writeVariableIfChanged(child, SECURITY_SENSOR_SID, "LastTrip", tostring(os.time()))
+                end
+                writeVariableIfChanged(child, SECURITY_SENSOR_SID, "Tripped", newTripped)
+
+                writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "BatteryLevel", nil, nil, topaz)
+                writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "BatteryDate", nil, topaz)
+                writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "LastUpdate", nil, nil, topaz)
+              end
+
+              altid = CO_ID_PREFIX .. id
+              local child = findChild(PARENT_DEVICE, altid)
+              if (child == nil) then
+                log("failed to find device for CO detector " .. altid)
+              else
+                -- make sure this device has category_num=4 (Security Sensor)
+                if (luup.attr_get("category_num", child) ~= "4") then
+                  luup.attr_set("category_num", "4", child)
+                end
+                -- make sure this device has subcategory_num=5 (CO Sensor)
+                if (luup.attr_get("subcategory_num", child) ~= "5") then
+                  luup.attr_set("subcategory_num", "5", child)
+                end
+
+                -- set LastTrip to now if Tripped is transitioning from "0" to "1"
+                local newTripped = nestToUpnp(SECURITY_SENSOR_SID, "Tripped", topaz, CO_ID_PREFIX)
+                if newTripped == "1" and luup.variable_get(SECURITY_SENSOR_SID, "Tripped", child) ~= "1" then
+                  writeVariableIfChanged(child, SECURITY_SENSOR_SID, "LastTrip", tostring(os.time()))
+                end
+                writeVariableIfChanged(child, SECURITY_SENSOR_SID, "Tripped", newTripped)
+
+                writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "BatteryLevel", nil, nil, topaz)
+                writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "BatteryDate", nil, topaz)
+                writeVariableFromNestIfChanged(child, HA_DEVICE_SID, "LastUpdate", nil, nil, topaz)
+              end
+
+            end
+          end
+
+        end
+      end
+    end
+
+    local function setAway(structure_id, away)
+      debug("in setAway()")
+
+      local session = login()
+
+      if (session == nil) then
+        return false
+      else
+        local res = {}
+        local data = '{"away_timestamp":' .. tostring(os.time()) .. '000,"away":' .. tostring(away) .. ',"away_setter":0}'
+        local headers = {["user-agent"] = NEST_UA,
+		                     ["Authorization"] = "Basic " .. session.access_token,
+		                     ["X-nl-protocol-version"] = "1",
+		                     ["content-length"] = string.len(data),
+		                     ["content-type"] = "application/json"}
+        local url = { url = session.transport_url .. "/v2/put/structure." .. structure_id,
+		                  protocol = "tlsv1",
+		                  method = "POST",
+		                  source = ltn12.source.string(data),
+		                  sink = ltn12.sink.table(res),
+		                  headers = headers }
+        -- local https = require("ssl.https")
+        local one, code, headers, status = https.request(url)
+        if code == 302 then
+          debug("redirecting...")
+          if headers.location then
+            url.url = headers.location
+            url.source = ltn12.source.string(data)
+            url.create = nil
+            one, code, headers, status = https.request(url)
+          else
+            log("asked to redirect but no location given")
+          end
+        end
+        return code == 200
+      end
+    end
+
+    local function setTargetTemperature(serviceId, lul_device, tempC)
+      debug("in setTargetTemperature()")
+
+      local session = login()
+
+      if (session == nil) then
+        return false
+      else
+        local status = luup.variable_get(HVAC_USER_SID, "ModeStatus", lul_device)
+        local target = (serviceId == TEMP_SETPOINT_HEAT_SID) and
+                  ((status == "HeatOn") and "target_temperature" or "target_temperature_low") or
+                  ((status == "CoolOn") and "target_temperature" or "target_temperature_high")
+
+        local thermostat_id = getThermostatId(luup.devices[lul_device].id)
+        local res = {}
+        local data = '{"target_change_pending":true,"' .. target .. '":' .. string.format('%0.1f', tempC) .. '}'
+        local headers = {["user-agent"] = NEST_UA,
+                         ["Authorization"] = "Basic " .. session.access_token,
+                         ["X-nl-protocol-version"] = "1",
+                         ["content-length"] = string.len(data),
+                         ["content-type"] = "application/json"}
+        local url = { url = session.transport_url .. "/v2/put/shared." .. thermostat_id,
+                      protocol = "tlsv1",
+                      method = "POST",
+                      source = ltn12.source.string(data),
+                      sink = ltn12.sink.table(res),
+                      headers = headers }
+
+        local one, code, headers, status = https.request(url)
+        if code == 302 then
+          debug("redirecting...")
+          if headers.location then
+            url.url = headers.location
+            url.source = ltn12.source.string(data)
+            url.create = nil
+            one, code, headers, status = https.request(url)
+          else
+            log("asked to redirect but no location given")
+          end
+        end
+        return code == 200
+      end
+    end
+
+    local function setTargetTemperatureType(thermostat_id, targetType)
+      debug("in setTargetTemperatureType()")
+
+      if (targetType ~= "off" and targetType ~= "range" and
+          targetType ~= "heat" and targetType ~= "cool") then
+        log("Invalid target_temperature_type: " .. tostring(targetType))
+        return false
+      end
+      
+      local session = login()
+
+      if (session == nil) then
+        return false
+      else
+        local res = {}
+        local data = '{"target_temperature_type":"' .. targetType .. '"}'
+        local headers = {["user-agent"] = NEST_UA,
+                         ["Authorization"] = "Basic " .. session.access_token,
+                         ["X-nl-protocol-version"] = "1",
+                         ["content-length"] = string.len(data),
+                         ["content-type"] = "application/json"}
+        local url = { url = session.transport_url .. "/v2/put/shared." .. thermostat_id,
+                      protocol = "tlsv1",
+                      method = "POST",
+                      source = ltn12.source.string(data),
+                      sink = ltn12.sink.table(res),
+                      headers = headers }
+
+        local one, code, headers, status = https.request(url)
+        if code == 302 then
+          debug("redirecting...")
+          if headers.location then
+            url.url = headers.location
+            url.source = ltn12.source.string(data)
+            url.create = nil
+            one, code, headers, status = https.request(url)
+          else
+            log("asked to redirect but no location given")
+          end
+        end
+        return code == 200
+      end
+    end
+
+    local function setFan(thermostat_id, mode)
+      debug("in setFan()")
+      
+      local session = login()
+      
+      if (session == nil) then
+        return false
+      else
+        local res = {}
+        local data = '{"fan_mode":"' .. mode .. '"}'
+        local headers = {["user-agent"] = NEST_UA,
+		                     ["Authorization"] = "Basic " .. session.access_token,
+		                     ["X-nl-protocol-version"] = "1",
+		                     ["content-length"] = string.len(data),
+		                     ["content-type"] = "application/json"}
+        local url = { url = session.transport_url .. "/v2/put/device." .. thermostat_id,
+                      protocol = "tlsv1",
+                      method = "POST",
+                      source = ltn12.source.string(data),
+                      sink = ltn12.sink.table(res),
+                      headers = headers }
+        local one, code, headers, status = https.request(url)
+        if code == 302 then
+          debug("redirecting...")
+          if headers.location then
+            url.url = headers.location
+            url.source = ltn12.source.string(data)
+            url.create = nil
+            one, code, headers, status = https.request(url)
+          else
+            log("asked to redirect but no location given")
+          end
+        end
+        return code == 200
+      end
+    end
+
+    function poll()
+      -- debug("in poll()")
+
+      task("Clearing...", TASK_SUCCESS)
+
+      getStatus()
+
+      -- set up the next poll
+      local period = readVariableOrInit(PARENT_DEVICE, NEST_SID, "period", tostring(DEFAULT_POLL))
+      debug("polling device " .. PARENT_DEVICE .. " again in " .. period .. " seconds")
+      luup.call_timer("poll", 1, period, "", "")
+    end
+
+    local function getStatusSoon()
+      if (not statusOutstanding) then
+        luup.call_timer("getStatus", 1, SOON, "", "")
+        statusOutstanding = true
+      end
+    end
+
+    function init(lul_device)
+      log("plugin version " .. PLUGIN_VERSION .. " starting up...", 50)
+
+      PARENT_DEVICE = lul_device
+
+      Logging = tonumber(readVariableOrInit(PARENT_DEVICE, NEST_SID, "Logging", "0"))
+      Logging = Logging or 0
+      if Logging &lt; 0 or Logging &gt; 1 then
+        Logging = 0
+      end
+      debug("Logging is set to " .. Logging)
+
+      TemperaturePrecision = tonumber(readVariableOrInit(PARENT_DEVICE, NEST_SID, "TemperatureScale", "1"))
+      TemperaturePrecision = TemperaturePrecision or 1
+      if TemperaturePrecision &lt; 1 or TemperaturePrecision &gt; 1000 then
+        TemperaturePrecision = 1
+      end
+
+      getVeraTemperatureScale()
+
+      https = require("ssl.https")
+      urlcode = require("L_nest_urlcode")
+      require("ltn12")
+
+      debug("polling device " .. PARENT_DEVICE .. " in " .. SOON .. " seconds")
+      luup.call_timer("poll", 1, SOON, "", "")
+    end
+  </functions>
+  <startup>init</startup>
+  <actionList>
+    <action>
+      <serviceId>urn:watou-com:serviceId:Nest1</serviceId>
+      <name>SetUsername</name>
+      <run>
+        luup.variable_set(NEST_SID, "username", lul_settings.username or "", lul_device)
+        clearSession()
+        getStatusSoon()
+      </run>
+    </action>
+    <action>
+      <serviceId>urn:watou-com:serviceId:Nest1</serviceId>
+      <name>GetUsername</name>
+      <run>
+        return luup.variable_get(NEST_SID, "username", lul_device)
+      </run>
+    </action>
+    <action>
+      <serviceId>urn:watou-com:serviceId:Nest1</serviceId>
+      <name>SetPassword</name>
+      <run>
+        luup.variable_set(NEST_SID, "password", lul_settings.password or "", lul_device)
+        clearSession()
+        getStatusSoon()
+      </run>
+    </action>
+    <action>
+      <serviceId>urn:watou-com:serviceId:Nest1</serviceId>
+      <name>GetPassword</name>
+      <run>
+        return luup.variable_get(NEST_SID, "password", lul_device)
+      </run>
+    </action>
+    <action>
+      <serviceId>urn:watou-com:serviceId:Nest1</serviceId>
+      <name>SetPeriod</name>
+      <run>
+        local period = tonumber(lul_settings.period)
+        period = period or DEFAULT_POLL
+        period = (period &lt; MIN_POLL) and MIN_POLL or period
+        luup.variable_set(NEST_SID, "period", period, lul_device)
+      </run>
+    </action>
+    <action>
+      <serviceId>urn:watou-com:serviceId:Nest1</serviceId>
+      <name>GetPeriod</name>
+      <run>
+        return luup.variable_get(NEST_SID, "period", lul_device)
+      </run>
+    </action>
+    <action>
+      <serviceId>urn:watou-com:serviceId:Nest1</serviceId>
+      <name>SetStatus</name>
+      <run>
+        luup.variable_set(NEST_SID, "status", lul_settings.status or "0", lul_device)
+      </run>
+    </action>
+    <action>
+      <serviceId>urn:watou-com:serviceId:Nest1</serviceId>
+      <name>GetStatus</name>
+      <run>
+        return luup.variable_get(NEST_SID, "status", lul_device)
+      </run>
+    </action>
+    <action>
+      <serviceId>urn:upnp-org:serviceId:HouseStatus1</serviceId>
+      <name>SetOccupancyState</name>
+      <run>
+        local away
+        if (lul_settings.NewOccupancyState == "Occupied") then
+          away = false
+        elseif (lul_settings.NewOccupancyState == "Unoccupied") then
+          away = true
+        else
+          log("SetOccupancyState received invalid arg: " .. tostring(lul_settings.NewOccupancyState))
+          return
+        end
+        if (setAway(getStructureId(luup.devices[lul_device].id), away)) then
+          getStatusSoon()
+        else
+          task("Failed to send away command.")
+        end
+      </run>
+    </action>
+    <action>
+      <serviceId>urn:upnp-org:serviceId:HouseStatus1</serviceId>
+      <name>GetOccupancyState</name>
+      <run>
+        return luup.variable_get(HOUSE_STATUS_SID, "OccupancyState", lul_device)
+      </run>
+    </action>
+    <action>
+      <serviceId>urn:upnp-org:serviceId:SwitchPower1</serviceId>
+      <name>GetStatus</name>
+      <run>
+        return luup.variable_get(SWITCH_POWER_SID, "Status", lul_device)
+      </run>
+    </action>
+    <action>
+      <serviceId>urn:upnp-org:serviceId:SwitchPower1</serviceId>
+      <name>SetTarget</name>
+      <run>
+        local away
+        if (lul_settings.newTargetValue == "1") then
+          away = false
+        elseif (lul_settings.newTargetValue == "0") then
+          away = true
+        else
+          log("SetTarget received invalid arg: " .. tostring(lul_settings.newTargetValue))
+          return
+        end
+        if (setAway(getStructureId(luup.devices[lul_device].id), away)) then
+          getStatusSoon()
+        else
+          task("Failed to send away command.")
+        end
+      </run>
+    </action>
+    <action>
+      <serviceId>urn:upnp-org:serviceId:SwitchPower1</serviceId>
+      <name>GetTarget</name>
+      <run>
+        return luup.variable_get(SWITCH_POWER_SID, "Status", lul_device)
+      </run>
+    </action>
+    <action>
+      <serviceId>urn:upnp-org:serviceId:TemperatureSensor1</serviceId>
+      <name>GetApplication</name>
+      <run>
+        return nestToUpnp(TEMP_SENSOR_SID, "Application")
+      </run>
+    </action>
+    <action>
+      <serviceId>urn:upnp-org:serviceId:TemperatureSensor1</serviceId>
+      <name>SetApplication</name>
+      <run>
+        -- no point yet that I know
+      </run>
+    </action>
+    <action>
+      <serviceId>urn:upnp-org:serviceId:TemperatureSensor1</serviceId>
+      <name>GetCurrentTemperature</name>
+      <run>
+        return luup.variable_get(TEMP_SENSOR_SID, "CurrentTemperature", lul_device)
+      </run>
+    </action>
+    <action>
+      <serviceId>urn:upnp-org:serviceId:TemperatureSetpoint1_Heat</serviceId>
+      <name>GetApplication</name>
+      <run>
+        return nestToUpnp(TEMP_SETPOINT_HEAT_SID, "Application")
+      </run>
+    </action>
+    <action>
+      <serviceId>urn:upnp-org:serviceId:TemperatureSetpoint1_Heat</serviceId>
+      <name>SetCurrentSetpoint</name>
+      <run>
+        -- tell the Nest to set the new target temperature to delocalizeTemp(lul_settings.NewCurrentSetpoint)
+        if (setTargetTemperature(TEMP_SETPOINT_HEAT_SID, lul_device, delocalizeTemp(lul_settings.NewCurrentSetpoint))) then
+          getStatusSoon()
+        else
+          task("Failed to send heat setpoint command.")
+        end
+      </run>
+    </action>
+    <action>
+      <serviceId>urn:upnp-org:serviceId:TemperatureSetpoint1_Heat</serviceId>
+      <name>GetCurrentSetpoint</name>
+      <run>
+        return luup.variable_get(TEMP_SETPOINT_HEAT_SID, "CurrentSetpoint", lul_device)
+      </run>
+    </action>
+    <action>
+      <serviceId>urn:upnp-org:serviceId:TemperatureSetpoint1_Cool</serviceId>
+      <name>GetApplication</name>
+      <run>
+        return nestToUpnp(TEMP_SETPOINT_COOL_SID, "Application")
+      </run>
+    </action>
+    <action>
+      <serviceId>urn:upnp-org:serviceId:TemperatureSetpoint1_Cool</serviceId>
+      <name>SetCurrentSetpoint</name>
+      <run>
+        -- tell the Nest to set the new target temperature to delocalizeTemp(lul_settings.NewCurrentSetpoint)
+        if (setTargetTemperature(TEMP_SETPOINT_COOL_SID, lul_device, delocalizeTemp(lul_settings.NewCurrentSetpoint))) then
+          getStatusSoon()
+        else
+          task("Failed to send cool setpoint command.")
+        end
+      </run>
+    </action>
+    <action>
+      <serviceId>urn:upnp-org:serviceId:TemperatureSetpoint1_Cool</serviceId>
+      <name>GetCurrentSetpoint</name>
+      <run>
+        return luup.variable_get(TEMP_SETPOINT_COOL_SID, "CurrentSetpoint", lul_device)
+      </run>
+    </action>
+    <action>
+      <serviceId>urn:upnp-org:serviceId:HVAC_UserOperatingMode1</serviceId>
+      <name>SetModeTarget</name>
+      <run>
+        -- tell the Nest to switch to lul_settings.NewModeTarget
+        local targetType = upnpToNest(HVAC_USER_SID, "ModeTarget", lul_settings.NewModeTarget)
+        if (targetType and setTargetTemperatureType(getThermostatId(luup.devices[lul_device].id), targetType)) then
+          -- SPECIAL CASE
+          -- immediately record this state change in the local device variable, instead of
+          -- waiting for the status update, because setting heat and cool setpoints depends
+          -- on the device variable, which will likely be stale for several seconds.
+          -- Normally, we would never set our own device variable unless we were getting
+          -- a status dump back from nest.com, the sole authority.
+          -- SPECIAL CASE
+          writeVariableIfChanged(lul_device, HVAC_USER_SID, "ModeTarget", lul_settings.NewModeTarget)
+
+          -- regardless, queue up a status poll
+          getStatusSoon()
+        else
+          task("Failed to send set mode target command.")
+        end
+      </run>
+    </action>
+    <action>
+      <serviceId>urn:upnp-org:serviceId:HVAC_UserOperatingMode1</serviceId>
+      <name>GetModeTarget</name>
+      <run>
+        return luup.variable_get(HVAC_USER_SID, "ModeTarget", lul_device) or "AutoChangeOver"
+      </run>
+    </action>
+    <action>
+      <serviceId>urn:upnp-org:serviceId:HVAC_UserOperatingMode1</serviceId>
+      <name>GetModeStatus</name>
+      <run>
+        return luup.variable_get(HVAC_USER_SID, "ModeStatus", lul_device)
+      </run>
+    </action>
+    <action>
+      <serviceId>urn:upnp-org:serviceId:HVAC_FanOperatingMode1</serviceId>
+      <name>SetMode</name>
+      <run>
+        local mode
+        if (lul_settings.NewMode == "ContinuousOn") then
+          mode = "on"
+        elseif (lul_settings.NewMode == "Auto") then
+          mode = "auto"
+        else
+          log("SetMode received invalid arg: " .. tostring(lul_settings.NewMode))
+          return
+        end
+        if (setFan(getThermostatId(luup.devices[lul_device].id), mode)) then
+          getStatusSoon()
+        else
+          task("Failed to send fan command.")
+        end
+      </run>
+    </action>
+    <action>
+      <serviceId>urn:upnp-org:serviceId:HVAC_FanOperatingMode1</serviceId>
+      <name>GetMode</name>
+      <run>
+        return luup.variable_get(HVAC_FAN_SID, "Mode", lul_device) or "Auto"
+      </run>
+    </action>
+    <action>
+      <serviceId>urn:upnp-org:serviceId:HVAC_FanOperatingMode1</serviceId>
+      <name>GetFanStatus</name>
+      <run>
+        return luup.variable_get(HVAC_FAN_SID, "FanStatus", lul_device) or "Off"
+      </run>
+    </action>
+    <action>
+      <serviceId>urn:micasaverde-com:serviceId:SecuritySensor1</serviceId>
+      <name>SetArmed</name>
+      <run>
+        luup.variable_set(SECURITY_SENSOR_SID, "Armed", lul_settings.newArmedValue, lul_device)
+      </run>
+    </action>
+
+  </actionList>
+</implementation>
+

@@ -1,0 +1,182 @@
+{
+    "flashicon": "icons/Humidity_Sensor.swf",
+    "iconText": "1",
+    "imgIconBody": "",
+    "imgIconDimmable": "",
+    "imgIconTurnable": "",
+    "imgIconMin": "",
+    "imgIconMax": "",
+    "halloIconsDir": "pics/hallo",
+    "x": "2",
+    "y": "3",
+    "inScene": "0",
+    "DisplayStatus": {
+        "Service": "urn:micasaverde-com:serviceId:HumiditySensor1",
+        "Variable": "CurrentLevel",
+        "MinValue": "0",
+        "MaxValue": "100"
+    },
+    "doc_url": {
+        "doc_language": 1,
+        "doc_manual": 1,
+        "doc_version": 1,
+        "doc_platform": 0,
+        "doc_page": "sensors"
+    },
+    "Tabs": [
+        {
+            "Label": {
+                "lang_tag": "tabname_control",
+                "text": "Control"
+            },
+            "Position": "0",
+            "TabType": "flash",
+            "ControlGroup": [
+                {
+                    "id": "1",
+                    "scenegroup": "1"
+                }
+            ],
+            "SceneGroup": [
+                {
+                    "id": "1",
+                    "top": "1.5",
+                    "left": "0.25",
+                    "x": "1.5",
+                    "y": "2"
+                }
+            ],
+            "Control": [
+                {
+                    "ControlGroup": "1",
+                    "ControlType": "label",
+                    "top": "0",
+                    "left": "0",
+                    "Label": {
+                        "lang_tag": "humidity",
+                        "text": "Humidity"
+                    },
+                    "Display": {
+                        "Top": 60,
+                        "Left": 50,
+                        "Width": 75,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlGroup": "1",
+                    "ControlType": "variable",
+                    "top": "1",
+                    "left": "0",
+                    "Display": {
+                        "Service": "urn:micasaverde-com:serviceId:HumiditySensor1",
+                        "Variable": "CurrentLevel",
+                        "Top": 60,
+                        "Left": 145,
+                        "Width": 75,
+                        "Height": 20
+                    }
+                }
+            ]
+        },
+        {
+            "Label": {
+                "lang_tag": "settings",
+                "text": "Settings"
+            },
+            "Position": "1",
+            "TabType": "javascript",
+            "ScriptName": "shared.js",
+            "Function": "simple_device"
+        },
+        {
+            "Label": {
+                "lang_tag": "advanced",
+                "text": "Advanced"
+            },
+            "Position": "2",
+            "TabType": "javascript",
+            "ScriptName": "shared.js",
+            "Function": "advanced_device"
+        },
+        {
+            "Label": {
+                "lang_tag": "logs",
+                "text": "Logs"
+            },
+            "Position": "3",
+            "TabType": "javascript",
+            "ScriptName": "shared.js",
+            "Function": "device_logs"
+        },
+        {
+            "Label": {
+                "lang_tag": "notifications",
+                "text": "Notifications"
+            },
+            "Position": "4",
+            "TabType": "javascript",
+            "ScriptName": "shared.js",
+            "Function": "device_notifications"
+        }
+    ],
+    "eventList2": [
+        {
+            "id": 1,
+            "label": {
+                "lang_tag": "humidity_goes_above",
+                "text": "Humidity goes above"
+            },
+            "serviceId": "urn:micasaverde-com:serviceId:HumiditySensor1",
+            "argumentList": [
+                {
+                    "id": 1,
+                    "dataType": "i4",
+                    "name": "CurrentLevel",
+                    "comparisson": ">",
+                    "prefix": {
+						"lang_tag":"humidity",
+						"text": "Humidity"
+					},
+                    "suffix": {
+						"lang_tag":"percent_sign",
+						"text":"%"
+					},
+                    "HumanFriendlyText": {
+                        "lang_tag": "hft_humidity_goes_above",
+                        "text": "Humidity reported by _DEVICE_NAME_ goes above _ARGUMENT_VALUE_"
+                    }
+                }
+            ]
+        },
+        {
+            "id": 2,
+            "label": {
+                "lang_tag": "humidity_goes_below",
+                "text": "Humidity goes below"
+            },
+            "serviceId": "urn:micasaverde-com:serviceId:HumiditySensor1",
+            "argumentList": [
+                {
+                    "id": 1,
+                    "dataType": "i4",
+                    "name": "CurrentLevel",
+                    "comparisson": "<",
+                    "prefix": {
+						"lang_tag":"humidity",
+						"text": "Humidity"
+					},
+                    "suffix": {
+						"lang_tag":"percent_sign",
+						"text":"%"
+					},
+                    "HumanFriendlyText": {
+                        "lang_tag": "hft_humidity_goes_below",
+                        "text": "Humidity reported by _DEVICE_NAME_ goes below _ARGUMENT_VALUE_"
+                    }
+                }
+            ]
+        }
+    ],
+    "DeviceType": "urn:schemas-watou-com:device:NestHumidistat:1"
+}
