@@ -120,65 +120,65 @@ Please contact me through the [micasaverde.com forum][me].  All tips are gratefu
 
 Fixed issue:
 
-* Remove bad version checking code (watou/vera-nest#35)
+* Remove bad version checking code (([#35](https://github.com/watou/vera-nest/issues/35)))
 
 ### 2014-07-30    v1.7
 
 Enhancements:
 
-* Added the creation of a smoke detector device and carbon monoxide detector device for each Nest Protect(r) that is listed in the user's account at nest.com. (watou/vera-nest#32)).  (Reminder of disclaimer: Do not rely on any of these devices or any aspect of the plugin to protect the health or safety of anyone or anything.  Please read the full license for further information.)
+* Added the creation of a smoke detector device and carbon monoxide detector device for each Nest Protect(r) that is listed in the user's account at nest.com. (([#32](https://github.com/watou/vera-nest/issues/32)))).  (Reminder of disclaimer: Do not rely on any of these devices or any aspect of the plugin to protect the health or safety of anyone or anything.  Please read the full license for further information.)
 * Add "where" location info to device names (e.g., Hallway, Den, Basement, etc.) on device creation if specified (#33)
-* Append meaningful descriptions to child device names (Humidity, Smoke, CO) (watou/vera-nest#34)
+* Append meaningful descriptions to child device names (Humidity, Smoke, CO) (([#34](https://github.com/watou/vera-nest/issues/34)))
 
 ### 2014-03-22    v1.6
 
 Fixed issue:
 
-* Now, on attempting to get status, nest.com's transport servers can return HTTP 200 (OK) but not the JSON payload we're expecting (likely when the token has expired), and this was causing the code to expect data that wasn't there, killing future polling cycles.  This fix adds better error checking. (watou/vera-nest#31)
+* Now, on attempting to get status, nest.com's transport servers can return HTTP 200 (OK) but not the JSON payload we're expecting (likely when the token has expired), and this was causing the code to expect data that wasn't there, killing future polling cycles.  This fix adds better error checking. (([#31](https://github.com/watou/vera-nest/issues/31)))
 
 ### 2014-03-15    v1.5
 
 Fixed issue:
 
-* Replaced use of sslv3 with tlsv1 to fix a new connectivity issue reported by some users (watou/vera-nest#30)
+* Replaced use of sslv3 with tlsv1 to fix a new connectivity issue reported by some users (([#30](https://github.com/watou/vera-nest/issues/30)))
 
 ### 2014-01-16    v1.4
 
 Fixed issues:
 
-* Disable Heat or Cool buttons when not can_heat or can_cool (watou/vera-nest#28)
+* Disable Heat or Cool buttons when not can_heat or can_cool (([#28](https://github.com/watou/vera-nest/issues/28)))
 * Move the "Home/Away" device from DEVICE_CATEGORY_SWITCH (3) to DEVICE_CATEGORY_HVAC (5) (#29)
 
 ### 2013-10-09    v1.3
 
 Fixed issues:
 
-* Added triggers for ModeState changes (watou/vera-nest#25)
-* Cached ModeStatus on set so that immediate setpoint changes work (watou/vera-nest#26)
-* Added `TemperatureScale` device variable for (optionally) more precise current temperature values (watou/vera-nest#27)
+* Added triggers for ModeState changes (([#25](https://github.com/watou/vera-nest/issues/25)))
+* Cached ModeStatus on set so that immediate setpoint changes work (([#26](https://github.com/watou/vera-nest/issues/26)))
+* Added `TemperatureScale` device variable for (optionally) more precise current temperature values (([#27](https://github.com/watou/vera-nest/issues/27)))
 
 ### 2013-07-01    v1.2
 
 Fixed issues:
 
-* Setting home/away fails on Vera2 (watou/vera-nest#21)
-* Detect when there is no fan installed (watou/vera-nest#24)
+* Setting home/away fails on Vera2 (([#21](https://github.com/watou/vera-nest/issues/21)))
+* Detect when there is no fan installed (([#24](https://github.com/watou/vera-nest/issues/24)))
 
 ### 2013-04-06    v1.1
 
 Fixed issue:
 
-* The Home/Away command stopped working (watou/vera-nest#19)
+* The Home/Away command stopped working (([#19](https://github.com/watou/vera-nest/issues/19)))
 
 ### 2013-02-13    v1.0
 
 Fixed issues:
 
-* Send away_timestamp in milliseconds, not seconds (watou/vera-nest#9)
-* Improve task message on login failure (watou/vera-nest#10)
-* Triggers needed for setting heat/cool setpoints in the other direction (watou/vera-nest#11)
-* Added a `Logging` variable to the main Nest account device to increase log output (watou/vera-nest#15)
-* Added variable text under the setpoint sliders that shows the current ModeState (watou/vera-nest#16)
+* Send away_timestamp in milliseconds, not seconds (([#9](https://github.com/watou/vera-nest/issues/9)))
+* Improve task message on login failure (([#10](https://github.com/watou/vera-nest/issues/10)))
+* Triggers needed for setting heat/cool setpoints in the other direction (([#11](https://github.com/watou/vera-nest/issues/11)))
+* Added a `Logging` variable to the main Nest account device to increase log output (([#15](https://github.com/watou/vera-nest/issues/15)))
+* Added variable text under the setpoint sliders that shows the current ModeState (([#16](https://github.com/watou/vera-nest/issues/16)))
 
 ### 2012-12-27    v0.9
 * Only set device variables if they have changed (to decrease log output)
