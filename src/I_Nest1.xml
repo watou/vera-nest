@@ -107,7 +107,7 @@ decompress_lzo_file() {
 
     -- main functions
 
-    local PLUGIN_VERSION = "1.8"
+    local PLUGIN_VERSION = "1.9"
 
     local NEST_SID = "urn:watou-com:serviceId:Nest1"
     local NEST_STRUCTURE_SID = "urn:watou-com:serviceId:NestStructure1"
@@ -500,6 +500,9 @@ decompress_lzo_file() {
           local added = 0
           local ptr = luup.chdev.start(PARENT_DEVICE)
 
+          local isUI7 = luup.variable_get(NEST_SID, "UI7Check", PARENT_DEVICE) == "true"
+          local suffix = isUI7 and "_UI7" or ""
+
           if res.structure then
             for id,structure in pairs(res.structure) do
               local altid = STRUCTURE_ID_PREFIX .. id
@@ -507,7 +510,7 @@ decompress_lzo_file() {
                 added = added + 1
               end
               luup.chdev.append(PARENT_DEVICE, ptr, altid, structure.name, "urn:schemas-watou-com:device:NestStructure:1",
-                   "D_NestStructure1.xml", "",
+                   "D_NestStructure1" .. suffix .. ".xml", "",
                            nestToUpnpParam(HOUSE_STATUS_SID, "OccupancyState", structure) ..
                    "\n" .. nestToUpnpParam(NEST_STRUCTURE_SID, "StreetAddress", structure) ..
                    "\n" .. nestToUpnpParam(NEST_STRUCTURE_SID, "Location", structure) ..
@@ -528,7 +531,7 @@ decompress_lzo_file() {
               local device = res.device[id]
               local track  = res.track[id]
               luup.chdev.append(PARENT_DEVICE, ptr, altid, getThermostatName(shared, device, whereMap), "urn:schemas-watou-com:device:HVAC_ZoneThermostat:1",
-                   "D_NestThermostat1.xml", "",
+                   "D_NestThermostat1" .. suffix .. ".xml", "",
                            nestToUpnpParam(TEMP_SENSOR_SID, "CurrentTemperature", shared, device) ..
                    "\n" .. nestToUpnpParam(TEMP_SETPOINT_HEAT_SID, "CurrentSetpoint", shared, device) ..
                    "\n" .. nestToUpnpParam(TEMP_SETPOINT_COOL_SID, "CurrentSetpoint", shared, device) ..
@@ -552,7 +555,7 @@ decompress_lzo_file() {
               local device = res.device[id]
               local track  = res.track[id]
               luup.chdev.append(PARENT_DEVICE, ptr, altid, getThermostatName(shared, device, whereMap) .. " Humidity", "urn:schemas-watou-com:device:NestHumidistat:1",
-                   "D_NestHumidistat1.xml", "",
+                   "D_NestHumidistat1" .. suffix .. ".xml", "",
                            nestToUpnpParam(HUMIDITY_SENSOR_SID, "CurrentLevel", shared, device) ..
                   "\n" .. nestToUpnpParam(HA_DEVICE_SID, "LastUpdate", track)
                    , false, false)
@@ -580,8 +583,8 @@ decompress_lzo_file() {
               if (findChild(PARENT_DEVICE, altid) == nil) then
                 added = added + 1
               end
-              luup.chdev.append(PARENT_DEVICE, ptr, altid, getProtectName(topaz, whereMap) .. " CO", "urn:schemas-watou-com:device:NestCOSensor:1",
-                  "D_NestCOSensor1.xml", "",
+              luup.chdev.append(PARENT_DEVICE, ptr, altid, getProtectName(topaz, whereMap) .. " CO", isUI7 and "urn:schemas-micasaverde-com:device:SmokeSensor:1" or "urn:schemas-watou-com:device:NestCOSensor:1",
+                  isUI7 and "D_SmokeSensor1.xml" or "D_NestCOSensor1.xml", "",
                           nestToUpnpParam(SECURITY_SENSOR_SID, "Tripped",  topaz, CO_ID_PREFIX) ..
                   "\n" .. nestToUpnpParam(SECURITY_SENSOR_SID, "LastTrip", topaz, CO_ID_PREFIX) ..
                   "\n" .. nestToUpnpParam(SECURITY_SENSOR_SID, "Armed", topaz, CO_ID_PREFIX) ..
@@ -908,10 +911,28 @@ decompress_lzo_file() {
       end
     end
 
+    local function checkVersion()
+      local ui7Check = luup.variable_get(NEST_SID, "UI7Check", PARENT_DEVICE) or ""
+      if ui7Check == "" then
+        ui7Check = "false"
+        luup.variable_set(NEST_SID, "UI7Check", ui7Check, PARENT_DEVICE)
+      end
+      if (luup.version_branch == 1 and luup.version_major == 7 and ui7Check == "false") then
+        luup.variable_set(NEST_SID, "UI7Check", "true", PARENT_DEVICE)
+        luup.attr_set("device_json", "D_Nest1_UI7.json", PARENT_DEVICE)
+        luup.reload()
+      end
+      return true
+    end
+
     function init(lul_device)
       log("plugin version " .. PLUGIN_VERSION .. " starting up...", 50)
 
       PARENT_DEVICE = lul_device
+
+      if not checkVersion() then
+        return false
+      end
 
       Logging = tonumber(readVariableOrInit(PARENT_DEVICE, NEST_SID, "Logging", "0"))
       Logging = Logging or 0

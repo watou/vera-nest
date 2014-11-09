@@ -13,7 +13,7 @@
     <modelName>All Nest Labs thermostats and Protects</modelName>
     <modelNumber>1.0</modelNumber>
     <handleChildren>1</handleChildren>
-    <staticJson>D_Nest1.json</staticJson>
+    <staticJson>D_Nest1_UI7.json</staticJson>
     <serviceList>
       <service>
         <serviceType>urn:schemas-watou-com:service:Nest:1</serviceType>

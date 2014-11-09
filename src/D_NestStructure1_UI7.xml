@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<root xmlns="urn:schemas-upnp-org:device-1-0">
+  <specVersion>
+    <major>1</major>
+    <minor>0</minor>
+  </specVersion>
+  <device>
+    <deviceType>urn:schemas-watou-com:device:NestStructure:1</deviceType>
+    <friendlyName>Nest</friendlyName>
+    <manufacturer>Nest Labs</manufacturer>
+    <manufacturerURL>http://www.nest.com</manufacturerURL>
+    <modelDescription>Structure from nest.com</modelDescription>
+    <modelName>All Nest Labs structures</modelName>
+    <modelNumber>1.0</modelNumber>
+    <handleChildren>0</handleChildren>
+    <staticJson>D_NestStructure1_UI7.json</staticJson>
+    <serviceList>
+      <service>
+        <serviceType>urn:schemas-watou-com:service:NestStructure:1</serviceType>
+        <serviceId>urn:watou-com:serviceId:NestStructure1</serviceId>
+        <SCPDURL>S_NestStructure1.xml</SCPDURL>
+      </service>
+      <service>
+        <serviceType>urn:schemas-upnp-org:service:HouseStatus:1</serviceType>
+        <serviceId>urn:upnp-org:serviceId:HouseStatus1</serviceId>
+        <SCPDURL>S_HouseStatus1.xml</SCPDURL>
+      </service>
+      <service>
+        <serviceType>urn:schemas-upnp-org:service:SwitchPower:1</serviceType>
+        <serviceId>urn:upnp-org:serviceId:SwitchPower1</serviceId>
+        <SCPDURL>S_SwitchPower1.xml</SCPDURL>
+      </service>
+      <service>
+        <serviceType>urn:schemas-micasaverde-com:service:HaDevice:1</serviceType>
+        <serviceId>urn:micasaverde-com:serviceId:HaDevice1</serviceId>
+        <SCPDURL>S_HaDevice1.xml</SCPDURL>
+      </service>
+    </serviceList>
+  </device>
+</root>

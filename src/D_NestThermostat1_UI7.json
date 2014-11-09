@@ -1,5 +1,5 @@
 {
-    "flashicon": "http://watou.github.io/vera-nest/icons/nest_thermostat.png",
+    "default_icon": "http://watou.github.io/vera-nest/icons/nest_thermostat.png",
     "iconText": "1",
     "imgIconBody": "",
     "imgIconDimmable": "",
@@ -10,6 +10,63 @@
     "x": "3",
     "y": "4",
     "inScene": "1",
+    "state_icons": [
+        {
+            "img": "http://watou.github.io/vera-nest/icons/nest_thermostat_25.png",
+            "conditions": [
+                {
+                    "service": "urn:micasaverde-com:serviceId:HVAC_OperatingState1",
+                    "variable": "ModeState",
+                    "operator": "==",
+                    "value": "Off"
+                }
+            ]
+        },
+        {
+            "img": "http://watou.github.io/vera-nest/icons/nest_thermostat_25.png",
+            "conditions": [
+                {
+                    "service": "urn:micasaverde-com:serviceId:HVAC_OperatingState1",
+                    "variable": "ModeState",
+                    "operator": "==",
+                    "value": "FanOnly"
+                }
+            ]
+        },
+        {
+            "img": "http://watou.github.io/vera-nest/icons/nest_thermostat_25.png",
+            "conditions": [
+                {
+                    "service": "urn:micasaverde-com:serviceId:HVAC_OperatingState1",
+                    "variable": "ModeState",
+                    "operator": "==",
+                    "value": "Idle"
+                }
+            ]
+        },
+        {
+            "img": "http://watou.github.io/vera-nest/icons/nest_thermostat_50.png",
+            "conditions": [
+                {
+                    "service": "urn:micasaverde-com:serviceId:HVAC_OperatingState1",
+                    "variable": "ModeState",
+                    "operator": "==",
+                    "value": "Heating"
+                }
+            ]
+        },
+        {
+            "img": "http://watou.github.io/vera-nest/icons/nest_thermostat_75.png",
+            "conditions": [
+                {
+                    "service": "urn:micasaverde-com:serviceId:HVAC_OperatingState1",
+                    "variable": "ModeState",
+                    "operator": "==",
+                    "value": "Cooling"
+                }
+            ]
+        }
+    ],
     "DisplayStatus": {
         "Style": "numeric",
         "Service": "urn:upnp-org:serviceId:TemperatureSensor1",

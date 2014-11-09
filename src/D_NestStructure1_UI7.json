@@ -1,5 +1,5 @@
 {
-    "flashicon": "http://watou.github.io/vera-nest/icons/nest_structure.png",
+    "default_icon": "http://watou.github.io/vera-nest/icons/nest_structure.png",
     "imgIconBody": "",
     "imgIconDimmable": "",
     "imgIconTurnable": "",
@@ -7,18 +7,32 @@
     "imgIconMax": "",
     "halloIconsDir": "pics/hallo",
     "state_icons": [
-        "nest_structure_0.png",
-        "nest_structure_100.png"
+        {
+            "img": "http://watou.github.io/vera-nest/icons/nest_structure_0.png",
+            "conditions": [
+                {
+                    "service": "urn:upnp-org:serviceId:SwitchPower1",
+                    "variable": "Status",
+                    "operator": "==",
+                    "value": 0
+                }
+            ]
+        },
+        {
+            "img": "http://watou.github.io/vera-nest/icons/nest_structure_100.png",
+            "conditions": [
+                {
+                    "service": "urn:upnp-org:serviceId:SwitchPower1",
+                    "variable": "Status",
+                    "operator": "==",
+                    "value": 1
+                }
+            ]
+        }
     ],
     "x": "2",
     "y": "4",
     "inScene": "1",
-    "DisplayStatus": {
-        "Service": "urn:upnp-org:serviceId:SwitchPower1",
-        "Variable": "Status",
-        "MinValue": "0",
-        "MaxValue": "1"
-    },
     "doc_url": {
         "doc_language": 1,
         "doc_manual": 1,
